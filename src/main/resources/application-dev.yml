@@ -1,0 +1,40 @@
+# Local development profile. It targets the SC-UAT Oracle instance; no in-memory database
+# is used anywhere, so the schema always matches production.
+# Export before starting the application:
+#   SPRING_DATASOURCE_URL=jdbc:oracle:thin:@//opusuat-scan.allianz-tr.local:1521/OPSSCUAT
+#   SPRING_DATASOURCE_USERNAME=<user>
+#   SPRING_DATASOURCE_PASSWORD=<password>
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:}
+    username: ${SPRING_DATASOURCE_USERNAME:}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+  jpa:
+    show-sql: true
+
+esb:
+  base-url: http://esb.allianz.com.tr:12000
+  ysv:
+    beyanname-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname
+    sorgu-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname/sorgu
+    sorgu-method: GET
+  connect-timeout: 10s
+  read-timeout: 60s
+
+token-management:
+  base-url: https://int-sc-test-auth.allianz.com.tr
+  path: /alz-token-management/api/v1/tokens/sbm-token-generate
+  client-name: ysv
+  user-name: WDA2422_16178
+  company-code: "045"
+  connect-timeout: 5s
+  read-timeout: 30s
+
+sbm:
+  company-code: "045"
+  retry:
+    max-attempts: 2
+
+logging:
+  level:
+    tr.com.allianz.ysv.services: DEBUG

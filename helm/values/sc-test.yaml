@@ -1,0 +1,27 @@
+springboot-deployment:
+  app:
+    env:
+      java:
+        args: -Xms3g -Xmx3g -XX:+FlightRecorder
+      springboot:
+        profile: sc-test
+        sysType: SC-TEST
+    resources:
+      limits:
+        cpu: '2'
+        memory: 3Gi
+      requests:
+        cpu: '0.5'
+        memory: 3Gi
+    secretManager:
+      vault:
+        secret: kv/data/TEST
+        template: |
+          {{ with secret "kv/data/TEST/data-source/opusAgencyDataSource" -}}
+            export SPRING_DATASOURCE_USERNAME="{{ .Data.data.username }}"
+            export SPRING_DATASOURCE_PASSWORD="{{ .Data.data.password }}"
+            export SPRING_DATASOURCE_URL="{{ .Data.data.url }}"
+          {{- end }}
+    autoscale:
+      minReplicas: 1
+      maxReplicas: 1

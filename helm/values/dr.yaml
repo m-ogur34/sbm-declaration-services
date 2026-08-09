@@ -1,0 +1,29 @@
+# Disaster recovery region. Same PROD profile and Vault path as live.yaml; only the
+# replica count differs while the region is passive.
+springboot-deployment:
+  app:
+    env:
+      java:
+        args: -Xms4g -Xmx4g -XX:+FlightRecorder
+      springboot:
+        profile: prod
+        sysType: PROD
+    resources:
+      limits:
+        cpu: '2'
+        memory: 5Gi
+      requests:
+        cpu: '1'
+        memory: 5Gi
+    secretManager:
+      vault:
+        secret: kv/data/PROD
+        template: |
+          {{ with secret "kv/data/PROD/data-source/opusAgencyDataSource" -}}
+            export SPRING_DATASOURCE_USERNAME="{{ .Data.data.username }}"
+            export SPRING_DATASOURCE_PASSWORD="{{ .Data.data.password }}"
+            export SPRING_DATASOURCE_URL="{{ .Data.data.url }}"
+          {{- end }}
+    autoscale:
+      minReplicas: 2
+      maxReplicas: 4

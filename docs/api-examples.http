@@ -1,0 +1,122 @@
+### sbm-declaration-services - örnek istekler
+### IntelliJ IDEA HTTP Client ile çalıştırılabilir.
+
+@host = http://localhost:8080/sbm-declaration-services
+@user = WDA2422_16178
+
+### 1) Gönder - 2026/1 dönemindeki tüm NEW ve ERROR kayıtları SBM'ye POST eder
+POST {{host}}/api/v1/declarations/send
+Content-Type: application/json
+X-User-Name: {{user}}
+
+{
+  "year": 2026,
+  "month": 1,
+  "cityCode": null,
+  "processIds": []
+}
+
+### 2) Gönder - sadece belirli kayıtlar (diğer filtreler dikkate alınmaz)
+POST {{host}}/api/v1/declarations/send
+Content-Type: application/json
+X-User-Name: {{user}}
+
+{
+  "processIds": [1, 2]
+}
+
+### 3) Gönder - tek il (34 İstanbul, büyükşehir olduğu için ilceKodu gönderilmez)
+POST {{host}}/api/v1/declarations/send
+Content-Type: application/json
+X-User-Name: {{user}}
+
+{
+  "year": 2026,
+  "month": 1,
+  "cityCode": 34
+}
+
+### 4) Güncelle - SENT/COMPLETED kayıtları SBM'de günceller (ay, yıl, il, ilçe gönderilmez)
+PUT {{host}}/api/v1/declarations/update
+Content-Type: application/json
+X-User-Name: {{user}}
+
+{
+  "year": 2026,
+  "month": 1
+}
+
+### 5) İptal - SBM'de silme yoktur; tüm tutarlar 0 olarak PUT edilir
+POST {{host}}/api/v1/declarations/cancel
+Content-Type: application/json
+X-User-Name: {{user}}
+
+{
+  "processIds": [1, 2]
+}
+
+### 6) Sorgu - SBM'den beyanname sorgular, onaylanırsa kayıtlar COMPLETED olur
+GET {{host}}/api/v1/declarations/query/YSV202513491
+X-User-Name: {{user}}
+
+### 7) Liste - sayfalı, filtreli
+GET {{host}}/api/v1/declarations/processes?status=ERROR&year=2026&month=1&page=0&size=20
+X-User-Name: {{user}}
+
+### 8) Liste - tüm kayıtlar
+GET {{host}}/api/v1/declarations/processes?page=0&size=50
+
+### 9) Health
+GET {{host}}/actuator/health
+
+### 10) OpenAPI
+GET {{host}}/v3/api-docs
+
+
+###############################################################################
+# Referans: uygulamanın ESB üzerinden SBM'ye gönderdiği gövdeler
+###############################################################################
+
+### SBM POST gövdesi (uygulama üretir - buradan elle çağrılmaz)
+# POST http://esb.allianz.com.tr:12000/api/rest/vergi-beyan-rs/v10/ysv-beyanname
+# Authorization: Bearer <alz-token-management accessToken>
+# Requester-ID-Type: 1
+# Requester-ID-No: <clientIdNumber>
+# Content-Type: application/json
+#
+# {
+#   "ay": 1,
+#   "yil": 2026,
+#   "ilKodu": 1,
+#   "ilceKodu": null,
+#   "sigortaSirketKodu": "045",
+#   "sonOdemeTarihi": "2026-01-20",
+#   "ysvDosyaNo": "YSV202513491",
+#   "ysvTutarList": [
+#     { "alinanPrimTutari": 7453723.22, "iptalPrimTutari": 15090.61, "menkulTipi": "MENKUL",
+#       "odenecekVergi": 743863.26, "vergiOrani": 10, "vergiPrimTutari": 7438632.61 },
+#     { "alinanPrimTutari": 723907.24, "iptalPrimTutari": 7227.93, "menkulTipi": "GAYRIMENKUL",
+#       "odenecekVergi": 71667.93, "vergiOrani": 10, "vergiPrimTutari": 716679.31 }
+#   ]
+# }
+
+### SBM PUT gövdesi - ay, yil, ilKodu, ilceKodu gönderilmez
+# PUT http://esb.allianz.com.tr:12000/api/rest/vergi-beyan-rs/v10/ysv-beyanname
+#
+# {
+#   "sigortaSirketKodu": "045",
+#   "sonOdemeTarihi": "2026-01-20",
+#   "ysvDosyaNo": "YSV202513491",
+#   "ysvTutarList": [ ... ]
+# }
+
+### SBM sorgu gövdesi
+# GET http://esb.allianz.com.tr:12000/api/rest/vergi-beyan-rs/v10/ysv-beyanname/sorgu
+#
+# { "sigortaSirketKodu": "045", "ysvDosyaNo": "YSV202513491" }
+
+### alz-token-management
+# POST https://int-sc-test-auth.allianz.com.tr/alz-token-management/api/v1/tokens/sbm-token-generate
+#
+# { "clientName": "ysv", "transactionId": "<uuid>", "functionName": "ysv-beyanname-gonder",
+#   "userName": "WDA2422_16178", "companyCode": "045" }

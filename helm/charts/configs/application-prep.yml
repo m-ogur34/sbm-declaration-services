@@ -1,0 +1,27 @@
+esb:
+  base-url: http://esb.allianz.com.tr:12000
+  ysv:
+    beyanname-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname
+    sorgu-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname/sorgu
+    sorgu-method: GET
+  connect-timeout: 10s
+  read-timeout: 60s
+
+token-management:
+  # TODO(confirm): only the TEST address of alz-token-management is known so far.
+  base-url: https://int-sc-test-auth.allianz.com.tr
+  path: /alz-token-management/api/v1/tokens/sbm-token-generate
+  client-name: ysv
+  user-name: WDA2422_16178
+  company-code: "045"
+  connect-timeout: 5s
+  read-timeout: 30s
+
+sbm:
+  company-code: "045"
+  retry:
+    max-attempts: 2          # only for SEC-00002 and 5xx
+
+logging:
+  level:
+    tr.com.allianz.ysv.services: INFO

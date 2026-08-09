@@ -1,0 +1,8 @@
+apiVersion: v2
+name: sbm-declaration-services
+description: SBM YSV beyanname gönderim servisleri (Allianz Sigorta)
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+maintainers:
+  - name: Allianz Sigorta - YSV

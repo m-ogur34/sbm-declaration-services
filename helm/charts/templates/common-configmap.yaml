@@ -1,0 +1,12 @@
+{{/*
+Spring settings shared by every environment. Mounted as application.yml.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.configMap.commonName }}
+  labels:
+    {{- include "sbm-declaration-services.labels" . | nindent 4 }}
+data:
+  application.yml: |-
+{{ .Files.Get "common-configs/application.yml" | indent 4 }}
