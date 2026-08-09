@@ -5,43 +5,24 @@ import lombok.Getter;
 /**
  * SBM {@code menkulTipi}.
  *
- * <p>{@code code} is the OPUS/Excel numeric representation (1/2) that the legacy SOAP
- * integration used to put on the wire. The REST contract expects the string value, so
- * {@code sbmValue} is the only thing that ever reaches SBM: no SBM DTO has a numeric
- * {@code menkulTipi} field. {@code code} exists purely to interpret OPUS data on the way
- * into {@code ALZ_SBM_DECL_PROCESS.MOVABLE_TYPE}.</p>
+ * <p>The REST contract only knows the string form, so that is the only form this enum
+ * carries. The legacy SOAP integration used to put the numeric OPUS codes (1 = MENKUL,
+ * 2 = GAYRIMENKUL) on the wire; that translation now happens in the OPUS load script, which
+ * writes {@code ALZ_SBM_DECL_PROCESS.MOVABLE_TYPE} as {@code 'MENKUL'} / {@code 'GAYRIMENKUL'}
+ * (the column has a CHECK constraint for exactly those two values). Nothing numeric can
+ * therefore reach SBM.</p>
  */
 @Getter
 public enum MovableType {
 
-    MENKUL(1, "MENKUL"),
-    GAYRIMENKUL(2, "GAYRIMENKUL");
+    MENKUL("MENKUL"),
+    GAYRIMENKUL("GAYRIMENKUL");
 
-    /** OPUS/Excel numeric code. Never sent to SBM. */
-    private final int code;
-
-    /** The value SBM's REST contract expects: "MENKUL" / "GAYRIMENKUL". */
+    /** The value SBM's REST contract expects. */
     private final String sbmValue;
 
-    MovableType(int code, String sbmValue) {
-        this.code = code;
+    MovableType(String sbmValue) {
         this.sbmValue = sbmValue;
-    }
-
-    /**
-     * @param code OPUS numeric code (1 = MENKUL, 2 = GAYRIMENKUL)
-     * @return the matching type, never {@code null}
-     * @throws IllegalArgumentException when the code is unknown
-     */
-    public static MovableType fromCode(Integer code) {
-        if (code != null) {
-            for (MovableType type : values()) {
-                if (type.code == code) {
-                    return type;
-                }
-            }
-        }
-        throw new IllegalArgumentException("Gecersiz menkul tipi kodu: " + code);
     }
 
     /**
