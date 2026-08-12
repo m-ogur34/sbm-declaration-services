@@ -13,7 +13,10 @@ spring:
     show-sql: true
 
 esb:
-  base-url: http://esb.allianz.com.tr:12000
+  # ESB_SERVER lets the address be overridden without touching the image; there is no DNS
+  # record for esb.allianz.com.tr in every environment, so a plain IP may be needed
+  # (e.g. http://10.70.52.149:12000 for UAT).
+  base-url: ${ESB_SERVER:http://esb.allianz.com.tr:12000}
   ysv:
     beyanname-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname
     sorgu-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname/sorgu

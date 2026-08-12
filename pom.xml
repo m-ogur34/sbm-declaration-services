@@ -33,9 +33,6 @@
         <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
         <springdoc.version>2.6.0</springdoc.version>
         <jacoco.version>0.8.12</jacoco.version>
-
-        <!-- Allianz ESB (OSB layer) generated REST client, resolved from the internal Nexus. -->
-        <esb-ysv-rest-client.version>9e937d1b74890c608e842f1a009e11db43ae57b4</esb-ysv-rest-client.version>
     </properties>
 
     <dependencies>
@@ -93,13 +90,10 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Allianz ESB routing client. Published on the internal Nexus only;
-             the artifact is resolved during the build on the Allianz VDI / CI. -->
-        <dependency>
-            <groupId>tr.com.allianz</groupId>
-            <artifactId>ysv-services-rest-client</artifactId>
-            <version>${esb-ysv-rest-client.version}</version>
-        </dependency>
+        <!-- No tr.com.allianz:ysv-services-rest-client dependency on purpose: the ESB is
+             called over plain HTTP with RestClient, nothing in this project imports that
+             SDK, and its presence on the internal Nexus has not been confirmed. Declaring
+             it would break the build before a single class is compiled. -->
 
         <dependency>
             <groupId>org.springframework.boot</groupId>

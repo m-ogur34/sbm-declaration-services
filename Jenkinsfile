@@ -1,5 +1,5 @@
-// Build / test / deploy skeleton. The agent must have access to the internal Nexus, which
-// serves both the Spring dependencies and tr.com.allianz:ysv-services-rest-client.
+// Build / test / deploy skeleton. The agent needs access to the internal Nexus, which
+// proxies every dependency this project uses.
 pipeline {
     agent { label 'maven-jdk21' }
 
@@ -52,7 +52,7 @@ pipeline {
             when { expression { return params.DEPLOY } }
             steps {
                 sh """
-                    helm upgrade --install sbm-declaration-services helm/charts \
+                    helm upgrade --install sbm-declaration-services helm/chart \
                         -f helm/values/${params.ENVIRONMENT}.yaml \
                         --set springboot-deployment.app.image.tag=${BUILD_NUMBER} \
                         --wait --timeout 5m
