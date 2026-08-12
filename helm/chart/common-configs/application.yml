@@ -1,8 +1,9 @@
-# Spring settings shared by every environment.
+# Settings shared by every environment. Anything that differs per environment lives in
+# configs/application-<profile>.yml instead.
 spring:
-  application:
-    name: sbm-declaration-services
   datasource:
+    # URL, username and password come from the Vault template as
+    # SPRING_DATASOURCE_URL / _USERNAME / _PASSWORD environment variables.
     driver-class-name: oracle.jdbc.OracleDriver
     hikari:
       pool-name: sbm-declaration-pool
@@ -44,3 +45,29 @@ springdoc:
     path: /swagger-ui.html
   api-docs:
     path: /v3/api-docs
+
+esb:
+  ysv:
+    beyanname-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname
+    sorgu-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname/sorgu
+    sorgu-method: GET
+  connect-timeout: 10s
+  read-timeout: 60s
+
+token-management:
+  path: /alz-token-management/api/v1/tokens/sbm-token-generate
+  client-name: ysv
+  user-name: WDA2422_16178
+  company-code: "045"
+  connect-timeout: 5s
+  read-timeout: 30s
+
+sbm:
+  company-code: "045"
+  retry:
+    max-attempts: 2          # only for SEC-00002 and 5xx
+
+logging:
+  level:
+    root: INFO
+    tr.com.allianz.ysv.services: INFO

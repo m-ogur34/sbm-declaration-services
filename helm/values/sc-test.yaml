@@ -1,3 +1,11 @@
+global:
+  overrides:
+    esb:
+      # null = use the default in chart/configs/application-sc-test.yml.
+      # Set a plain URL here when the esb.allianz.com.tr DNS record is not resolvable,
+      # e.g. http://10.70.52.149:12000
+      server: ~
+
 springboot-deployment:
   app:
     env:

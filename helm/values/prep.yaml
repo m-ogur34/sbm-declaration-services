@@ -1,3 +1,9 @@
+global:
+  overrides:
+    esb:
+      # null = use the default in chart/configs/application-prep.yml.
+      server: ~
+
 springboot-deployment:
   app:
     env:

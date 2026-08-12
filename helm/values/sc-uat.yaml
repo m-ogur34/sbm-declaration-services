@@ -1,3 +1,11 @@
+global:
+  overrides:
+    esb:
+      # null = use the default in chart/configs/application-sc-uat.yml.
+      # The legacy SOAP client pom notes that esb.allianz.com.tr has no DNS record and
+      # gives 10.70.52.149 for UAT; set http://10.70.52.149:12000 here if the name fails.
+      server: ~
+
 springboot-deployment:
   app:
     env:

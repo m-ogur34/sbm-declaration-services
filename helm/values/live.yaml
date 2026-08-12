@@ -1,3 +1,9 @@
+global:
+  overrides:
+    esb:
+      # null = use the default in chart/configs/application-prod.yml.
+      server: ~
+
 springboot-deployment:
   app:
     env:
@@ -9,10 +15,10 @@ springboot-deployment:
     resources:
       limits:
         cpu: '2'
-        memory: 5Gi
+        memory: 6Gi
       requests:
         cpu: '1'
-        memory: 5Gi
+        memory: 6Gi
     secretManager:
       vault:
         secret: kv/data/PROD
@@ -23,5 +29,5 @@ springboot-deployment:
             export SPRING_DATASOURCE_URL="{{ .Data.data.url }}"
           {{- end }}
     autoscale:
-      minReplicas: 2
-      maxReplicas: 4
+      minReplicas: 1
+      maxReplicas: 5

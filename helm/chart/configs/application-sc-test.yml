@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: sbm-declaration-services
+
+esb:
+  # ESB_SERVER is exported from global.overrides.esb.server in helm/values/sc-test.yaml.
+  base-url: ${ESB_SERVER:http://esb.allianz.com.tr:12000}
+
+token-management:
+  base-url: https://int-sc-test-auth.allianz.com.tr
+
+logging:
+  level:
+    tr.com.allianz.ysv.services: DEBUG
