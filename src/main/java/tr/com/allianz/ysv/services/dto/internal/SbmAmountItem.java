@@ -22,22 +22,27 @@ import lombok.Setter;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class SbmAmountItem {
 
+    /** Decimal. DB: {@code RECEIVED_PREMIUM_AMOUNT}. */
     private BigDecimal alinanPrimTutari;
 
+    /** Decimal. DB: {@code CANCELLED_PREMIUM_AMOUNT}. */
     private BigDecimal iptalPrimTutari;
 
-    /** "MENKUL" or "GAYRIMENKUL". */
+    /** String, "MENKUL" or "GAYRIMENKUL". DB: {@code MOVABLE_TYPE}. */
     private String menkulTipi;
 
+    /** Decimal. DB: {@code TAX_AMOUNT}. */
     private BigDecimal odenecekVergi;
 
+    /** Number. DB: {@code TAX_RATIO}. */
     private Integer vergiOrani;
 
+    /** Decimal. DB: {@code TAX_PREMIUM_AMOUNT}. */
     private BigDecimal vergiPrimTutari;
 
     /**
-     * TODO(confirm): not listed in the SBM field documentation. It is sent only when the
-     * database holds a value, so an unknown field can never break an ordinary request.
+     * Decimal. DB: {@code PREV_MONTH_REFUND_AMOUNT}. Belongs to the amount item, not to the
+     * request root. Sent only when the database holds a value.
      */
     private BigDecimal gecmisAyIadeTutari;
 }
