@@ -64,9 +64,8 @@ GROUP BY (DECLARATION_YEAR, DECLARATION_MONTH, CITY_CODE, ilceKodu)
    → gruptaki kayıtlar ysvTutarList elemanı olur (menkul tipi başına bir eleman)
 ```
 
-- `ilceKodu` grup anahtarında **SBM'nin göreceği** değerdir: büyükşehirde `null`, ilçe kodu
-  yoksa (`null` veya `0`) yine `null`. Böylece bir ilin geçersiz satırları tek grupta
-  toplanır ve topluca tek bir hata alır.
+- `ilceKodu` grup anahtarında **SBM'nin göreceği** değerdir: payload ile aynı
+  normalizasyondan geçer, yani `0` ve `null` aynı anlama gelir ve tek grupta toplanır.
 - **`ysvDosyaNo` grup anahtarında yer almaz.** Dosya numarasını sigorta şirketi serbestçe
   belirlediği için anahtara konsaydı tek bir yasal beyanname birden fazla isteğe bölünürdü.
   Dosya numarası grubun kayıtlarından okunur; grupta birden fazla farklı dosya numarası
@@ -74,19 +73,26 @@ GROUP BY (DECLARATION_YEAR, DECLARATION_MONTH, CITY_CODE, ilceKodu)
 - Aynı grupta aynı `menkulTipi` iki kez varsa **istek atılmadan önce** RISK-HAVUZU-00005 ile
   hata verilir.
 
-### Büyükşehir kuralı
+### İlçe kodu kuralı
 
-- İl büyükşehirse → `ilceKodu` **gönderilmez** (DB'de `0` veya dolu olsa bile).
-- Büyükşehir değilse → `ilceKodu` **zorunlu**; yoksa veya `0` ise istek atılmaz, kayıt
-  `ERROR` olur (RISK-HAVUZU-00008).
+Uygulamada büyükşehir listesi ve ilçe doğrulaması **yoktur**. Tek kural:
+
+- `DISTRICT_CODE` **null veya 0** ise → `ilceKodu` alanı JSON gövdesine **hiç yazılmaz**
+  (`null` + `@JsonInclude(NON_NULL)`). `"ilceKodu": 0` asla gönderilmez.
+- Diğer tüm durumlarda DB'deki değer **olduğu gibi** gönderilir.
+
+Kaynak Excel iş birimi tarafından büyükşehir ve bağlı ilçeler bazında düzenleniyor; hatalı
+il/ilçe kombinasyonlarını SBM zaten `RISK-HAVUZU-00007` / `RISK-HAVUZU-00008` ile bildiriyor
+ve bu cevap `ERROR_DETAILS`'e yazılıyor. Aynı kararı lokalde tekrar vermek, iş birimince
+doğru kabul edilen kayıtları gereksiz yere bloklardı.
 
 ---
 
 ## 2. Allianz VDI Kurulumu
 
-Proje yalnızca Allianz VDI ortamında (Windows + IntelliJ + iç Nexus + Oracle + ESB) derlenir
-ve çalışır. `tr.com.allianz:ysv-services-rest-client` bağımlılığı yalnızca iç Nexus'ta
-yayınlıdır, dışarıdan çözülemez.
+Proje Allianz VDI ortamında (Windows + IntelliJ + iç Nexus + Oracle + ESB) derlenir ve
+çalışır. Bağımlılıklar iç Nexus üzerinden çözülür; projede Nexus'a özel bir artifact
+bağımlılığı yoktur.
 
 ### 2.1 Repoyu klonla
 
@@ -120,15 +126,15 @@ type %USERPROFILE%\.m2\settings.xml
 
 - `<mirror>` → Allianz Nexus group repository URL'i (`*` veya `external:*` için)
 - `<server>` → Nexus kullanıcı adı/şifresi (ya da token)
-- `ysv-services-rest-client` artifact'ının yayınlandığı repository'nin group'a dahil olması
 
 Doğrulama:
 
 ```cmd
-mvnw.cmd -B dependency:get -Dartifact=tr.com.allianz:ysv-services-rest-client:9e937d1b74890c608e842f1a009e11db43ae57b4
+mvnw.cmd -B -o=false dependency:resolve
 ```
 
-Bu komut hatasız biterse Nexus erişimi tamamdır.
+Bu komut hatasız biterse Nexus erişimi tamamdır. Projede iç Nexus'a özel bir artifact
+bağımlılığı yoktur; tüm bağımlılıklar Maven Central'ın Nexus proxy'sinden çözülür.
 
 > Maven Wrapper varsayılan olarak dağıtımı `repo.maven.apache.org` adresinden indirir.
 > VDI'da dışarı çıkış kapalıysa `.mvn/wrapper/maven-wrapper.properties` içindeki
@@ -244,12 +250,18 @@ Hata gövdesi (tüm hatalar için tek tip):
 | Profil | Konum | Not |
 |---|---|---|
 | `dev` | `src/main/resources/application-dev.yml` | Lokal geliştirme, Oracle |
-| `sc-test` | `helm/charts/configs/application-sc-test.yml` | |
-| `sc-uat` | `helm/charts/configs/application-sc-uat.yml` | |
-| `prep` | `helm/charts/configs/application-prep.yml` | |
-| `prod` | `helm/charts/configs/application-prod.yml` | `live.yaml` ve `dr.yaml` kullanır |
+| `sc-test` | `helm/chart/configs/application-sc-test.yml` | |
+| `sc-uat` | `helm/chart/configs/application-sc-uat.yml` | |
+| `prep` | `helm/chart/configs/application-prep.yml` | |
+| `prod` | `helm/chart/configs/application-prod.yml` | `live.yaml` ve `dr.yaml` kullanır |
 
-Ortak Spring ayarları `helm/charts/common-configs/application.yml` içindedir.
+**Tüm ortaklar** `helm/chart/common-configs/application.yml` içindedir: context-path,
+logging seviyeleri, `spring.jpa`, Oracle driver, actuator endpoint'leri, ESB/token
+path'leri ve timeout'ları, `sbm.company-code` ve retry ayarı. `configs/application-<env>.yml`
+dosyalarında yalnızca ortama özgü farklar bulunur (`spring.application.name`, ESB ve
+alz-token-management base URL'leri, log seviyesi).
+
+`src/main/resources` altında sadece `application.yml` ve `application-dev.yml` vardır.
 
 Veritabanı kullanıcı adı/şifre/URL **koda veya yml'e yazılmaz**: Vault template'i
 `SPRING_DATASOURCE_URL / USERNAME / PASSWORD` ortam değişkenlerini export eder, Spring
@@ -269,7 +281,7 @@ yönlendirmesini ESB yapar.
 
 ```yaml
 esb:
-  base-url: http://esb.allianz.com.tr:12000
+  base-url: ${ESB_SERVER:http://esb.allianz.com.tr:12000}
   ysv:
     beyanname-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname
     sorgu-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname/sorgu
@@ -282,6 +294,12 @@ sbm:
   retry:
     max-attempts: 2          # yalnızca SEC-00002 ve 5xx için
 ```
+
+ESB adresi **koda gömülü değildir**. `helm/values/<ortam>.yaml` içindeki
+`global.overrides.esb.server` değeri pod'a `ESB_SERVER` ortam değişkeni olarak geçer ve
+yukarıdaki `${ESB_SERVER:...}` ifadesi bunu okur. `esb.allianz.com.tr` için her ortamda DNS
+kaydı bulunmayabildiğinden (legacy SOAP client pom'unda bu not ve UAT için `10.70.52.149`
+IP'si var) adres IP ile override edilebilir.
 
 Her istekten önce yeni token alınır (**cache yoktur**). SBM'ye giden header'lar token
 yanıtından üretilir:
@@ -349,13 +367,51 @@ src/main/java/tr/com/allianz/ysv/services/
 │                   MunicipalityRepository
 ├── service/        DeclarationService, DeclarationGroupProcessor, SbmClientService,
 │                   TokenManagementService, DeclarationLogService
-└── util/           BuyuksehirUtil, DateUtil, JsonUtil, MaskUtil
+└── util/           DistrictCodeResolver, DateUtil, JsonUtil, MaskUtil
 
 db/       setup_db.sql (değiştirilmedi), sample_insert.sql (50 satır)
 docs/     api-examples.http
-helm/     charts/ (Chart.yaml, values.yaml, templates/, configs/, common-configs/)
-          values/ (sc-test, sc-uat, prep, live, dr)
 ```
+
+### Helm ağacı
+
+```
+helm/
+├── chart/
+│   ├── common-configs/application.yml
+│   ├── configs/
+│   │   ├── application-prep.yml
+│   │   ├── application-prod.yml
+│   │   ├── application-sc-test.yml
+│   │   └── application-sc-uat.yml
+│   ├── templates/
+│   │   ├── _helpers.tpl
+│   │   ├── common-configmap.yaml
+│   │   ├── configmap.yaml
+│   │   └── secret.yaml
+│   ├── .helmignore
+│   ├── Chart.yaml
+│   └── values.yaml
+└── values/
+    ├── dr.yaml
+    ├── live.yaml
+    ├── prep.yaml
+    ├── sc-test.yaml
+    └── sc-uat.yaml
+```
+
+`chart/Chart.yaml` Allianz `springboot-deployment` chart'ını
+(`oci://harbor.allianz-tr.local/middleware`, `1.x.x`) bağımlılık olarak alır. ConfigMap
+template'leri `.Files.Glob` ile `common-configs/` ve `configs/` klasörlerini okur; kaynak
+adları `_helpers.tpl` içindeki `allianz.bundlename` helper'ından üretilir.
+
+Vault yolları: `sc-test → kv/data/TEST`, `sc-uat → kv/data/UAT`, `prep → kv/data/PREP`,
+`live` ve `dr → kv/data/PROD`. `live`/`dr` için `-Xms4g -Xmx4g`, memory limit `6Gi`,
+`minReplicas: 1`, `maxReplicas: 5`.
+
+> ⚠️ Klasör adının `chart` mı `charts` mı olduğu Jenkins pipeline ile teyit edilmeli.
+> Bu repo `accounting-services` projesindeki gibi tekil `chart` kullanıyor; `Jenkinsfile`
+> içindeki `helm upgrade` komutu da bu yolu kullanıyor.
 
 ---
 
@@ -368,9 +424,10 @@ helm/     charts/ (Chart.yaml, values.yaml, templates/, configs/, common-configs
 2. **ESB path'leri.** ESB'nin SBM path'lerini birebir mi proxy'lediği, yoksa kendi path'ini
    mi beklediği teyit edilmedi. Path'ler property'den yönetiliyor
    (`esb.ysv.beyanname-path`, `esb.ysv.sorgu-path`), hard-code edilmedi.
-3. **`gecmisAyIadeTutari`.** Alan SBM'nin dokümante ettiği alan listesinde yok. DB'de değer
-   varsa gönderiliyor, yoksa `@JsonInclude(NON_NULL)` ile payload'dan çıkarılıyor. SBM
-   tarafında karşılığı olup olmadığı teyit edilmeli.
+3. **`gecmisAyIadeTutari`.** Güncel SBM dökümanında alan `ysvTutarList`'in her elemanında
+   yer alıyor; kod da onu tutar kalemine (`SbmAmountItem`) koyuyor, root'a değil. DB'de
+   değer varsa gönderiliyor, yoksa `@JsonInclude(NON_NULL)` ile payload'dan çıkarılıyor.
+   Gerçek bir gönderimle uçtan uca doğrulanmadı.
 4. **Token `functionName` değeri.** Örnek istekte `"test"` geçiyor. Uygulama operasyona göre
    `ysv-beyanname-gonder` / `-guncelle` / `-sorgu` gönderiyor; alz-token-management ekibinden
    beklenen değer teyit edilmeli.
@@ -378,27 +435,33 @@ helm/     charts/ (Chart.yaml, values.yaml, templates/, configs/, common-configs
    (`https://int-sc-test-auth.allianz.com.tr`) var. `application-prep.yml` ve
    `application-prod.yml` şimdilik bu adresi taşıyor; ilk üretim koşusundan önce
    değiştirilmeli.
-6. **Büyükşehir il listesi OPUS verisiyle doğrulanmalı.** Analizle verilen 30 il kodu listesi
-   `BuyuksehirUtil` içinde birebir kullanıldı, ancak OPUS extract'i (548 satır / 274 grup)
-   bu listeyle iki noktada çelişiyor:
-   - **Büyükşehir listesinde olduğu halde ilçe kodu dolu 14 satır** — hepsi il 22 (Edirne).
-     Liste doğruysa SBM'ye ilçe gönderilmemeli; veri doğruysa Edirne listeden çıkmalı.
-     Aksi halde `RISK-HAVUZU-00007` beklenir.
-   - **Büyükşehir listesinde olmadığı halde ilçe kodu 0 olan 2 satır** — il 47 (Mardin).
-     Mardin gerçekte büyükşehir olduğu için listede eksik görünüyor; düzeltilmezse bu
-     satırlar `RISK-HAVUZU-00008` ile `ERROR` statüsüne düşer.
-
-   `db/sample_insert.sql` içine bu iki il bilinçli olarak alınmadı. Liste iş birimiyle
-   netleştirilmeli.
-7. **Büyükşehirlerde ilçe bazlı satırlar il bazında toplanmalı mı?** SBM büyükşehirler için
-   il bazında tek beyanname bekliyor. OPUS'ta aynı büyükşehir için birden fazla ilçe satırı
-   geldiğinde iki seçenek var:
-   - satırlar il bazında **toplanır** (tutarlar menkul tipi bazında sum'lanır), ya da
-   - her ilçe ayrı gönderilir ve SBM `RISK-HAVUZU-00004` (mükerrer beyanname) döner.
-
-   Mevcut kod **hiçbir tutarı kendiliğinden toplamıyor**: satırlar il bazında tek gruba
-   düşüyor, aynı menkul tipi birden fazla kez geldiği için gönderim öncesi
-   `RISK-HAVUZU-00005` ile hata veriliyor ve kayıtlar `ERROR` statüsüne düşüyor. Yani hata
-   sessizce yanlış veri göndermek yerine görünür oluyor. Toplama kuralının uygulanıp
-   uygulanmayacağı (ve toplanacaksa `sonOdemeTarihi` / `ysvDosyaNo` için hangi satırın esas
-   alınacağı) iş birimiyle netleştirilmeli.
+6. **Alan tipleri: number mı string mi?** SBM'nin güncel döküman örneğinde tüm değerler JSON
+   **string** olarak gösteriliyor (`"ay": "5"`, `"ilKodu": "34"`). Biz **number**
+   gönderiyoruz, çünkü legacy SOAP WSDL şeması bu alanları numerik tanımlıyor ve DB
+   kolonları da `NUMBER`. SBM `CORE-00005` (format hatası) dönerse çözüm: ilgili alanlara
+   `@JsonFormat(shape = JsonFormat.Shape.STRING)` eklemek — DTO'lar tek noktada
+   (`SbmDeclarationRequest`, `SbmAmountItem`) olduğu için tek satırlık bir değişiklik.
+7. **İlçe kodu doğrulaması uygulamada yapılmıyor.** Kaynak Excel iş birimi tarafından
+   düzenleniyor ve hatalı kayıtlar SBM'nin `RISK-HAVUZU-00007` / `RISK-HAVUZU-00008`
+   hatalarıyla yakalanıyor. Uygulamada büyükşehir listesi tutulmuyor; tek kural
+   `DISTRICT_CODE` null/0 ise alanın gönderilmemesi.
+8. **ESB path namespace'i.** ESB kendi path namespace'ini kullanıyor olabilir: legacy SOAP'ta
+   `YsvServices/ProxyService/YsvBeyanService` deseni kullanılmış. Bizim mevcut path'lerimiz
+   SBM'nin kendi path'i (`/api/rest/vergi-beyan-rs/v10/ysv-beyanname`); ESB ekibinden teyit
+   edilmeli, aksi halde `CORE-00009` (kaynak bulunamadı) alınır. Path'ler property'den
+   yönetildiği için (`esb.ysv.beyanname-path`, `esb.ysv.sorgu-path`) kod değişikliği
+   gerekmez.
+9. **`ysv-services-rest-client` artifact'ı.** Nexus'ta olup olmadığı teyit edilecek; varsa
+   içindeki ESB path'i ve DTO'lar bizimkilerle karşılaştırılacak. Şu an bağımlılık
+   `pom.xml`'de **yok** — ESB çağrıları `RestClient` ile yapılıyor ve SDK koddan
+   kullanılmıyor; artifact bulunamazsa build derleme başlamadan kırılacağı için
+   eklenmedi.
+10. **ESB DNS kaydı.** Legacy SOAP client pom'unda "esb.allianz.com.tr olarak bir dns kaydı
+    bulunmamakta" notu ve UAT için `10.70.52.149` IP'si var. Adres bu yüzden
+    `${ESB_SERVER:...}` üzerinden okunuyor ve `helm/values/<ortam>.yaml` içindeki
+    `global.overrides.esb.server` ile IP olarak override edilebiliyor. Her ortamda hangi
+    adresin geçerli olduğu ESB ekibinden alınmalı.
+11. **`global.overrides.esb.server` → `ESB_SERVER` eşlemesi.** Bu dönüşümü Allianz
+    `springboot-deployment` subchart'ı yapıyor varsayıldı. Subchart'ın env değişkeni
+    üretme sözleşmesi middleware ekibiyle doğrulanmalı; farklıysa yalnızca
+    `helm/values/*.yaml` değişir, uygulama kodu değişmez.
