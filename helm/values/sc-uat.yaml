@@ -9,6 +9,14 @@ global:
 springboot-deployment:
   app:
     env:
+      # ALTERNATİF ESB adresi tanımı. global.overrides.esb.server -> ESB_SERVER
+      # eşlemesini springboot-deployment subchart'ının yaptığı VARSAYILDI; sözleşmesi
+      # doğrulanmadı (README "Açık Konular" #11). Varsayım tutmazsa yukarıdaki
+      # global.overrides.esb.server yerine değişkeni burada doğrudan tanımla.
+      # Anahtar adı subchart sözleşmesine göre custom / variables / extraEnv olabilir:
+      # custom:
+      #   - name: ESB_SERVER
+      #     value: http://10.70.52.149:12000
       java:
         args: -Xms3g -Xmx3g -XX:+FlightRecorder
       springboot:

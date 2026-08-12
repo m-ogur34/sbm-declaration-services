@@ -4,9 +4,14 @@ global:
   overrides:
     bundleName: ~
     esb:
-      # Exported to the pod as ESB_SERVER and read by esb.base-url in the app config.
-      # There is no DNS record for esb.allianz.com.tr in every environment, so this can be
-      # overridden with a plain IP, e.g. http://10.70.52.149:12000 for UAT.
+      # ASSUMPTION, NOT VERIFIED: the springboot-deployment subchart turns this value into
+      # the ESB_SERVER environment variable, which esb.base-url reads as ${ESB_SERVER:...}.
+      # The subchart comes from the OCI registry, so its contract could not be inspected -
+      # see "Açık Konular" #11 in README.md. If it does not map this field, define
+      # ESB_SERVER directly under springboot-deployment.app.env in helm/values/<env>.yaml;
+      # every environment file carries a commented example.
+      # There is no DNS record for esb.allianz.com.tr in every environment, so the address
+      # may have to be a plain IP, e.g. http://10.70.52.149:12000 for UAT.
       server: ~
     chart:
       ingress:

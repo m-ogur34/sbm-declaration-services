@@ -461,7 +461,27 @@ Vault yolları: `sc-test → kv/data/TEST`, `sc-uat → kv/data/UAT`, `prep → 
     `${ESB_SERVER:...}` üzerinden okunuyor ve `helm/values/<ortam>.yaml` içindeki
     `global.overrides.esb.server` ile IP olarak override edilebiliyor. Her ortamda hangi
     adresin geçerli olduğu ESB ekibinden alınmalı.
-11. **`global.overrides.esb.server` → `ESB_SERVER` eşlemesi.** Bu dönüşümü Allianz
-    `springboot-deployment` subchart'ı yapıyor varsayıldı. Subchart'ın env değişkeni
-    üretme sözleşmesi middleware ekibiyle doğrulanmalı; farklıysa yalnızca
-    `helm/values/*.yaml` değişir, uygulama kodu değişmez.
+11. **`global.overrides.esb.server` → `ESB_SERVER` eşlemesi — DOĞRULANMAMIŞ VARSAYIM.**
+    Uygulama `esb.base-url` değerini `${ESB_SERVER:...}` ifadesiyle okuyor, yani pod'da
+    `ESB_SERVER` adında bir ortam değişkeni bekliyor. `helm/chart/values.yaml` içindeki
+    `global.overrides.esb.server` alanını Allianz `springboot-deployment` subchart'ının bu
+    ortam değişkenine çevirdiği **varsayıldı**; subchart `oci://harbor.allianz-tr.local/middleware`
+    üzerinden geldiği ve bu repoda kaynağı bulunmadığı için sözleşmesi görülemedi.
+    Middleware ekibiyle doğrulanmalı.
+
+    Varsayım tutmazsa uygulama kodu değişmez, yalnızca `helm/values/<ortam>.yaml`
+    değişir: değişken `app.env` altında doğrudan tanımlanır. Her values dosyasında bunun
+    yorum satırı hâlinde örneği duruyor:
+
+    ```yaml
+    springboot-deployment:
+      app:
+        env:
+          # Anahtar adı subchart sözleşmesine göre custom / variables / extraEnv olabilir.
+          custom:
+            - name: ESB_SERVER
+              value: http://10.70.52.149:12000
+    ```
+
+    Bu durumda `global.overrides.esb.server` alanı kullanılmadan kalır; iki yöntem aynı anda
+    kullanılmamalı.
