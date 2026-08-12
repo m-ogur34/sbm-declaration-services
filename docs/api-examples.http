@@ -25,7 +25,7 @@ X-User-Name: {{user}}
   "processIds": [1, 2]
 }
 
-### 3) Gönder - tek il (34 İstanbul, büyükşehir olduğu için ilceKodu gönderilmez)
+### 3) Gönder - tek il (34; DISTRICT_CODE 0 ise ilceKodu gövdeye hiç yazılmaz)
 POST {{host}}/api/v1/declarations/send
 Content-Type: application/json
 X-User-Name: {{user}}

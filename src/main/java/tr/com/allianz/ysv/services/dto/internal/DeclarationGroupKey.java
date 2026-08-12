@@ -1,7 +1,7 @@
 package tr.com.allianz.ysv.services.dto.internal;
 
 import tr.com.allianz.ysv.services.entity.DeclarationProcess;
-import tr.com.allianz.ysv.services.util.BuyuksehirUtil;
+import tr.com.allianz.ysv.services.util.DistrictCodeResolver;
 
 /**
  * Grouping key of a single SBM request.
@@ -12,14 +12,14 @@ import tr.com.allianz.ysv.services.util.BuyuksehirUtil;
  * chosen freely by the insurer, so keying on it would split one legal declaration into
  * several requests. It is read back from the rows of the group instead.</p>
  *
- * <p>{@code districtCode} holds the value SBM would see, not the raw column: metropolitan
- * cities collapse to {@code null} (RISK-HAVUZU-00007) and so does a missing district, which
- * keeps every row of one declaration in one group.</p>
+ * <p>{@code districtCode} holds the value SBM would see, not the raw column: it goes through
+ * the same {@link DistrictCodeResolver} normalization as the payload, so the 0 OPUS delivers
+ * for a city level declaration and a {@code null} column end up in one and the same group.</p>
  *
  * @param declarationYear  SBM {@code yil}
  * @param declarationMonth SBM {@code ay}
  * @param cityCode         SBM {@code ilKodu}
- * @param districtCode     SBM {@code ilceKodu}, {@code null} for metropolitan cities
+ * @param districtCode     SBM {@code ilceKodu}, {@code null} when no district is sent
  */
 public record DeclarationGroupKey(Integer declarationYear,
                                   Integer declarationMonth,
@@ -30,6 +30,6 @@ public record DeclarationGroupKey(Integer declarationYear,
         return new DeclarationGroupKey(process.getDeclarationYear(),
                 process.getDeclarationMonth(),
                 process.getCityCode(),
-                BuyuksehirUtil.groupingDistrictCode(process.getCityCode(), process.getDistrictCode()));
+                DistrictCodeResolver.resolve(process.getDistrictCode()));
     }
 }

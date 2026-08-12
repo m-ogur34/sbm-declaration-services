@@ -13,7 +13,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static tr.com.allianz.ysv.services.testsupport.DeclarationProcessFixtures.districtRow;
-import static tr.com.allianz.ysv.services.testsupport.DeclarationProcessFixtures.metropolitanRow;
+import static tr.com.allianz.ysv.services.testsupport.DeclarationProcessFixtures.cityLevelRow;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -93,8 +93,8 @@ class DeclarationServiceTest {
     @Test
     @DisplayName("rows are folded into one SBM request per İl-İlçe-Yıl-Ay")
     void send_groupsRowsIntoOneRequestPerDeclaration() {
-        DeclarationProcess adanaMenkul = metropolitanRow(1L, MovableType.MENKUL);
-        DeclarationProcess adanaGayri = metropolitanRow(2L, MovableType.GAYRIMENKUL);
+        DeclarationProcess adanaMenkul = cityLevelRow(1L, MovableType.MENKUL);
+        DeclarationProcess adanaGayri = cityLevelRow(2L, MovableType.GAYRIMENKUL);
         DeclarationProcess adiyamanMenkul = districtRow(3L, MovableType.MENKUL);
         adiyamanMenkul.setSbmFileNo("YSV202513492");
         when(declarationProcessRepository.findCandidates(any(), any(), any(), any()))
@@ -116,8 +116,8 @@ class DeclarationServiceTest {
     @Test
     @DisplayName("ysvDosyaNo is not part of the key: one İl-İlçe-Yıl-Ay stays one request")
     void send_differentFileNumbersStillFormOneGroup() {
-        DeclarationProcess menkul = metropolitanRow(1L, MovableType.MENKUL);
-        DeclarationProcess gayrimenkul = metropolitanRow(2L, MovableType.GAYRIMENKUL);
+        DeclarationProcess menkul = cityLevelRow(1L, MovableType.MENKUL);
+        DeclarationProcess gayrimenkul = cityLevelRow(2L, MovableType.GAYRIMENKUL);
         gayrimenkul.setSbmFileNo("YSV202599999");
         when(declarationProcessRepository.findCandidates(any(), any(), any(), any()))
                 .thenReturn(List.of(menkul, gayrimenkul));
@@ -129,23 +129,8 @@ class DeclarationServiceTest {
     }
 
     @Test
-    @DisplayName("a metropolitan city groups at city level whatever DISTRICT_CODE holds")
-    void send_metropolitanRowsGroupAtCityLevel() {
-        DeclarationProcess cityLevel = metropolitanRow(1L, MovableType.MENKUL);
-        DeclarationProcess withDistrict = metropolitanRow(2L, MovableType.GAYRIMENKUL);
-        withDistrict.setDistrictCode(1707);
-        when(declarationProcessRepository.findCandidates(any(), any(), any(), any()))
-                .thenReturn(List.of(cityLevel, withDistrict));
-
-        BatchOperationResponse response = service.send(null, USER);
-
-        assertThat(response.totalGroups()).isEqualTo(1);
-        verify(declarationGroupProcessor).process(OperationType.POST, false, List.of(1L, 2L), USER);
-    }
-
-    @Test
-    @DisplayName("a regular city with no district collapses into one group, 0 and null alike")
-    void send_regularCityWithoutDistrictFormsASingleGroup() {
+    @DisplayName("DISTRICT_CODE 0 and null land in the same group: both mean \"no district\"")
+    void send_rowsWithoutADistrictFormOneGroup() {
         DeclarationProcess zeroDistrict = districtRow(1L, MovableType.MENKUL);
         zeroDistrict.setDistrictCode(0);
         DeclarationProcess nullDistrict = districtRow(2L, MovableType.GAYRIMENKUL);
@@ -160,8 +145,20 @@ class DeclarationServiceTest {
     }
 
     @Test
-    @DisplayName("different districts of a regular city stay separate declarations")
-    void send_regularCityDistrictsAreSeparateGroups() {
+    @DisplayName("a district level row is never folded into the city level one")
+    void send_districtAndCityLevelRowsAreSeparateGroups() {
+        DeclarationProcess cityLevel = cityLevelRow(1L, MovableType.MENKUL);
+        DeclarationProcess withDistrict = cityLevelRow(2L, MovableType.GAYRIMENKUL);
+        withDistrict.setDistrictCode(1707);
+        when(declarationProcessRepository.findCandidates(any(), any(), any(), any()))
+                .thenReturn(List.of(cityLevel, withDistrict));
+
+        assertThat(service.send(null, USER).totalGroups()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("different districts stay separate declarations")
+    void send_differentDistrictsAreSeparateGroups() {
         DeclarationProcess first = districtRow(1L, MovableType.MENKUL);
         DeclarationProcess second = districtRow(2L, MovableType.MENKUL);
         second.setDistrictCode(1105);
@@ -208,7 +205,7 @@ class DeclarationServiceTest {
     @Test
     void update_usesPutAndTheUpdatableStatuses() {
         when(declarationProcessRepository.findCandidates(any(), any(), any(), any()))
-                .thenReturn(List.of(metropolitanRow(1L, MovableType.MENKUL)));
+                .thenReturn(List.of(cityLevelRow(1L, MovableType.MENKUL)));
 
         service.update(new DeclarationFilterRequest(2026, 1, null, null), USER);
 
@@ -221,7 +218,7 @@ class DeclarationServiceTest {
     @DisplayName("cancel is a PUT with zeroed amounts: SBM has no delete operation")
     void cancel_usesPutWithZeroedAmounts() {
         when(declarationProcessRepository.findCandidates(any(), any(), any(), any()))
-                .thenReturn(List.of(metropolitanRow(1L, MovableType.MENKUL)));
+                .thenReturn(List.of(cityLevelRow(1L, MovableType.MENKUL)));
 
         service.cancel(new DeclarationFilterRequest(null, null, null, null), USER);
 
@@ -231,7 +228,7 @@ class DeclarationServiceTest {
     @Test
     void send_countsFailuresPerGroup() {
         when(declarationProcessRepository.findCandidates(any(), any(), any(), any()))
-                .thenReturn(List.of(metropolitanRow(1L, MovableType.MENKUL)));
+                .thenReturn(List.of(cityLevelRow(1L, MovableType.MENKUL)));
         when(declarationGroupProcessor.process(any(), anyBoolean(), anyList(), anyString()))
                 .thenReturn(Optional.of(new FailureDetail("YSV202513491", "CORE-01004", "hata")));
 
@@ -262,7 +259,7 @@ class DeclarationServiceTest {
     @DisplayName("a confirmed declaration is promoted from SENT to COMPLETED")
     void query_success_promotesRowsToCompleted() {
         when(declarationProcessRepository.findBySbmFileNo("YSV202513491"))
-                .thenReturn(List.of(metropolitanRow(1L, MovableType.MENKUL)));
+                .thenReturn(List.of(cityLevelRow(1L, MovableType.MENKUL)));
         when(sbmClientService.query(any())).thenReturn(SbmCallResult.builder()
                 .success(true)
                 .httpStatus(200)
@@ -345,7 +342,7 @@ class DeclarationServiceTest {
 
     @Test
     void search_mapsThePageToTheReadModel() {
-        DeclarationProcess row = metropolitanRow(1L, MovableType.MENKUL);
+        DeclarationProcess row = cityLevelRow(1L, MovableType.MENKUL);
         Pageable pageable = PageRequest.of(0, 20);
         Page<DeclarationProcess> page = new PageImpl<>(List.of(row), pageable, 1);
         when(declarationProcessRepository.search(any(), any(), any(), any(), any())).thenReturn(page);

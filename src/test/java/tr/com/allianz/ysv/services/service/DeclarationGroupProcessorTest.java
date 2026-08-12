@@ -11,7 +11,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static tr.com.allianz.ysv.services.testsupport.DeclarationProcessFixtures.baseRow;
-import static tr.com.allianz.ysv.services.testsupport.DeclarationProcessFixtures.metropolitanRow;
+import static tr.com.allianz.ysv.services.testsupport.DeclarationProcessFixtures.cityLevelRow;
 
 import java.util.List;
 import java.util.Optional;
@@ -19,7 +19,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -196,8 +195,32 @@ class DeclarationGroupProcessorTest {
     }
 
     @Test
-    @DisplayName("a regular city without a district never reaches SBM and lands in ERROR")
-    void process_regularCityWithoutDistrict_marksErrorWithoutCallingSbm() {
+    @DisplayName("a duplicated movable type never reaches SBM and lands in ERROR")
+    void process_duplicateMovableType_marksErrorWithoutCallingSbm() {
+        DeclarationGroupProcessor withRealMapper = new DeclarationGroupProcessor(
+                declarationProcessRepository, declarationLogService, sbmClientService,
+                new SbmMapper(), sbmProperties);
+        List<DeclarationProcess> group = new java.util.ArrayList<>(List.of(
+                cityLevelRow(1L, MovableType.MENKUL),
+                cityLevelRow(2L, MovableType.MENKUL)));
+        group.forEach(row -> row.setStatus(ProcessStatus.NEW));
+        when(declarationProcessRepository.lockByIds(GROUP_IDS)).thenReturn(group);
+
+        Optional<FailureDetail> failure =
+                withRealMapper.process(OperationType.POST, false, GROUP_IDS, "WDA2422");
+
+        assertThat(failure).isPresent();
+        assertThat(failure.get().errorCode()).isEqualTo(SbmErrorCode.RISK_HAVUZU_00005.getCode());
+        assertThat(group).allSatisfy(row -> {
+            assertThat(row.getStatus()).isEqualTo(ProcessStatus.ERROR);
+            assertThat(row.getErrorDetails()).contains("mükerrer menkul tipi");
+        });
+        verify(sbmClientService, never()).send(any());
+    }
+
+    @Test
+    @DisplayName("a city without a district is sent: the district rule is SBM's to enforce")
+    void process_missingDistrict_isSentAnyway() {
         DeclarationGroupProcessor withRealMapper = new DeclarationGroupProcessor(
                 declarationProcessRepository, declarationLogService, sbmClientService,
                 new SbmMapper(), sbmProperties);
@@ -208,15 +231,14 @@ class DeclarationGroupProcessorTest {
                 .build();
         when(declarationProcessRepository.lockByIds(List.of(1L)))
                 .thenReturn(new java.util.ArrayList<>(List.of(row)));
+        when(sbmClientService.send(any())).thenReturn(successResult());
 
         Optional<FailureDetail> failure =
                 withRealMapper.process(OperationType.POST, false, List.of(1L), "WDA2422");
 
-        assertThat(failure).isPresent();
-        assertThat(failure.get().errorCode()).isEqualTo(SbmErrorCode.RISK_HAVUZU_00008.getCode());
-        assertThat(row.getStatus()).isEqualTo(ProcessStatus.ERROR);
-        assertThat(row.getErrorDetails()).contains("ilçe kodu zorunludur");
-        verify(sbmClientService, never()).send(any());
+        assertThat(failure).isEmpty();
+        assertThat(row.getStatus()).isEqualTo(ProcessStatus.SENT);
+        verify(sbmClientService).send(any());
     }
 
     @Test
@@ -303,9 +325,9 @@ class DeclarationGroupProcessorTest {
     @Test
     @DisplayName("only SENT rows are promoted to COMPLETED")
     void markCompleted_promotesOnlySentRows() {
-        DeclarationProcess sent = metropolitanRow(1L, MovableType.MENKUL);
+        DeclarationProcess sent = cityLevelRow(1L, MovableType.MENKUL);
         sent.setStatus(ProcessStatus.SENT);
-        DeclarationProcess errored = metropolitanRow(2L, MovableType.GAYRIMENKUL);
+        DeclarationProcess errored = cityLevelRow(2L, MovableType.GAYRIMENKUL);
         errored.setStatus(ProcessStatus.ERROR);
         when(declarationProcessRepository.lockByIds(GROUP_IDS)).thenReturn(List.of(sent, errored));
 
@@ -319,8 +341,8 @@ class DeclarationGroupProcessorTest {
     }
 
     private static List<DeclarationProcess> newGroup(ProcessStatus status) {
-        DeclarationProcess menkul = metropolitanRow(1L, MovableType.MENKUL);
-        DeclarationProcess gayrimenkul = metropolitanRow(2L, MovableType.GAYRIMENKUL);
+        DeclarationProcess menkul = cityLevelRow(1L, MovableType.MENKUL);
+        DeclarationProcess gayrimenkul = cityLevelRow(2L, MovableType.GAYRIMENKUL);
         menkul.setStatus(status);
         gayrimenkul.setStatus(status);
         return new java.util.ArrayList<>(List.of(menkul, gayrimenkul));

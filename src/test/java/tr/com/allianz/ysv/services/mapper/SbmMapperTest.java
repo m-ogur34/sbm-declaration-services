@@ -5,8 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static tr.com.allianz.ysv.services.testsupport.DeclarationProcessFixtures.baseRow;
 import static tr.com.allianz.ysv.services.testsupport.DeclarationProcessFixtures.districtRow;
-import static tr.com.allianz.ysv.services.testsupport.DeclarationProcessFixtures.metropolitanRow;
+import static tr.com.allianz.ysv.services.testsupport.DeclarationProcessFixtures.cityLevelRow;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.math.BigDecimal;
@@ -39,11 +40,11 @@ class SbmMapperTest {
     // --- POST -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("POST carries ay/yil/ilKodu and drops ilceKodu for a metropolitan city")
-    void toSendRequest_metropolitanCity_omitsDistrictCode() {
+    @DisplayName("POST carries ay/yil/ilKodu and drops ilceKodu when the column holds 0")
+    void toSendRequest_cityLevelDeclaration_omitsDistrictCode() {
         List<DeclarationProcess> group = List.of(
-                metropolitanRow(1L, MovableType.MENKUL),
-                metropolitanRow(2L, MovableType.GAYRIMENKUL));
+                cityLevelRow(1L, MovableType.MENKUL),
+                cityLevelRow(2L, MovableType.GAYRIMENKUL));
 
         SbmDeclarationRequest request = mapper.toSendRequest(group, COMPANY_CODE);
 
@@ -59,7 +60,7 @@ class SbmMapperTest {
     }
 
     @Test
-    void toSendRequest_regularCity_sendsDistrictCode() {
+    void toSendRequest_districtDeclaration_sendsDistrictCodeUnchanged() {
         SbmDeclarationRequest request =
                 mapper.toSendRequest(List.of(districtRow(1L, MovableType.MENKUL)), COMPANY_CODE);
 
@@ -68,12 +69,33 @@ class SbmMapperTest {
     }
 
     @Test
-    @DisplayName("regular city without a district is rejected before the call leaves the JVM")
-    void toSendRequest_regularCityWithoutDistrict_throws() {
-        DeclarationProcess row = baseRow(1L, MovableType.MENKUL).cityCode(2).districtCode(0).build();
+    @DisplayName("a district for a city SBM treats as büyükşehir is forwarded, not blocked")
+    void toSendRequest_districtIsNeverValidatedAgainstTheCity() {
+        // 34 (İstanbul) is a metropolitan city; SBM will answer RISK-HAVUZU-00007 and that
+        // answer is what lands in ERROR_DETAILS. The application does not second guess it.
+        DeclarationProcess row = baseRow(1L, MovableType.MENKUL)
+                .cityCode(34).districtCode(1707).build();
 
-        assertSbmError(() -> mapper.toSendRequest(List.of(row), COMPANY_CODE),
-                SbmErrorCode.RISK_HAVUZU_00008);
+        SbmDeclarationRequest request = mapper.toSendRequest(List.of(row), COMPANY_CODE);
+
+        assertThat(request.getIlKodu()).isEqualTo(34);
+        assertThat(request.getIlceKodu()).isEqualTo(1707);
+    }
+
+    @Test
+    @DisplayName("a city without a district is sent as is; SBM decides with RISK-HAVUZU-00008")
+    void toSendRequest_missingDistrictIsNotRejectedLocally() {
+        DeclarationProcess zeroDistrict = baseRow(1L, MovableType.MENKUL)
+                .cityCode(2).districtCode(0).build();
+        DeclarationProcess nullDistrict = baseRow(2L, MovableType.GAYRIMENKUL)
+                .cityCode(2).districtCode(null).build();
+
+        SbmDeclarationRequest request =
+                mapper.toSendRequest(List.of(zeroDistrict, nullDistrict), COMPANY_CODE);
+
+        assertThat(request.getIlKodu()).isEqualTo(2);
+        assertThat(request.getIlceKodu()).isNull();
+        assertThat(request.getYsvTutarList()).hasSize(2);
     }
 
     @Test
@@ -81,14 +103,14 @@ class SbmMapperTest {
         DeclarationProcess row = baseRow(1L, MovableType.MENKUL).cityCode(null).districtCode(5).build();
 
         assertSbmError(() -> mapper.toSendRequest(List.of(row), COMPANY_CODE),
-                SbmErrorCode.RISK_HAVUZU_00006);
+                SbmErrorCode.CORE_01000);
     }
 
     @Test
-    @DisplayName("POST body serializes ilceKodu away instead of sending null")
-    void toSendRequest_serializedBodyOmitsNullDistrict() throws Exception {
+    @DisplayName("ilceKodu is left out of the body instead of being sent as null or 0")
+    void toSendRequest_serializedBodyOmitsMissingDistrict() throws Exception {
         SbmDeclarationRequest request =
-                mapper.toSendRequest(List.of(metropolitanRow(1L, MovableType.MENKUL)), COMPANY_CODE);
+                mapper.toSendRequest(List.of(cityLevelRow(1L, MovableType.MENKUL)), COMPANY_CODE);
 
         String json = objectMapper.writeValueAsString(request);
 
@@ -100,7 +122,6 @@ class SbmMapperTest {
     @Test
     @DisplayName("ilKodu and ilceKodu are JSON numbers, never zero padded strings")
     void toSendRequest_cityAndDistrictAreUnpaddedNumbers() throws Exception {
-        // city 2 is not a metropolitan municipality, so ilceKodu really is sent
         DeclarationProcess row = baseRow(1L, MovableType.MENKUL)
                 .cityCode(2).districtCode(7).build();
 
@@ -115,14 +136,45 @@ class SbmMapperTest {
     @DisplayName("menkulTipi goes out as the SBM string, never as the OPUS numeric code")
     void toSendRequest_movableTypeIsAlwaysAString() throws Exception {
         List<DeclarationProcess> group = List.of(
-                metropolitanRow(1L, MovableType.MENKUL),
-                metropolitanRow(2L, MovableType.GAYRIMENKUL));
+                cityLevelRow(1L, MovableType.MENKUL),
+                cityLevelRow(2L, MovableType.GAYRIMENKUL));
 
         String json = objectMapper.writeValueAsString(mapper.toSendRequest(group, COMPANY_CODE));
 
         assertThat(json).contains("\"menkulTipi\":\"MENKUL\"", "\"menkulTipi\":\"GAYRIMENKUL\"");
         assertThat(json).doesNotContain("\"menkulTipi\":1", "\"menkulTipi\":2",
                 "\"menkulTipi\":\"1\"", "\"menkulTipi\":\"2\"");
+    }
+
+    @Test
+    @DisplayName("every field keeps the JSON type the SBM contract and the WSDL agree on")
+    void serializedTypesMatchTheSbmContract() throws Exception {
+        DeclarationProcess row = baseRow(1L, MovableType.MENKUL)
+                .cityCode(34)
+                .districtCode(1425)
+                .prevMonthRefundAmount(new BigDecimal("125.50"))
+                .build();
+
+        JsonNode json = objectMapper.readTree(
+                objectMapper.writeValueAsString(mapper.toSendRequest(List.of(row), COMPANY_CODE)));
+
+        assertThat(json.get("ay").isInt()).as("ay").isTrue();
+        assertThat(json.get("yil").isInt()).as("yil").isTrue();
+        assertThat(json.get("ilKodu").isInt()).as("ilKodu").isTrue();
+        assertThat(json.get("ilceKodu").isInt()).as("ilceKodu").isTrue();
+        assertThat(json.get("sigortaSirketKodu").isTextual()).as("sigortaSirketKodu").isTrue();
+        assertThat(json.get("ysvDosyaNo").isTextual()).as("ysvDosyaNo").isTrue();
+        assertThat(json.get("sonOdemeTarihi").isTextual()).as("sonOdemeTarihi").isTrue();
+        assertThat(json.get("sonOdemeTarihi").asText()).isEqualTo("2026-01-20");
+
+        JsonNode item = json.get("ysvTutarList").get(0);
+        assertThat(item.get("menkulTipi").isTextual()).as("menkulTipi").isTrue();
+        assertThat(item.get("vergiOrani").isInt()).as("vergiOrani").isTrue();
+        for (String amount : List.of("alinanPrimTutari", "iptalPrimTutari", "odenecekVergi",
+                "vergiPrimTutari", "gecmisAyIadeTutari")) {
+            assertThat(item.get(amount).isNumber()).as(amount + " is a JSON number").isTrue();
+            assertThat(item.get(amount).isTextual()).as(amount + " is not a string").isFalse();
+        }
     }
 
     // --- PUT --------------------------------------------------------------------------
@@ -149,12 +201,16 @@ class SbmMapperTest {
     }
 
     @Test
-    @DisplayName("an update of a row that could never be sent still fails the metropolitan rule")
-    void toUpdateRequest_regularCityWithoutDistrict_throws() {
-        DeclarationProcess row = baseRow(1L, MovableType.MENKUL).cityCode(2).districtCode(null).build();
+    @DisplayName("PUT does not carry ilKodu/ilceKodu, so neither is validated")
+    void toUpdateRequest_ignoresCityAndDistrict() {
+        DeclarationProcess row = baseRow(1L, MovableType.MENKUL)
+                .cityCode(null).districtCode(null).build();
 
-        assertSbmError(() -> mapper.toUpdateRequest(List.of(row), COMPANY_CODE, false),
-                SbmErrorCode.RISK_HAVUZU_00008);
+        SbmDeclarationRequest request = mapper.toUpdateRequest(List.of(row), COMPANY_CODE, false);
+
+        assertThat(request.getIlKodu()).isNull();
+        assertThat(request.getIlceKodu()).isNull();
+        assertThat(request.getYsvDosyaNo()).isEqualTo("YSV202513491");
     }
 
     @Test
@@ -223,7 +279,7 @@ class SbmMapperTest {
     @Test
     @DisplayName("gecmisAyIadeTutari is only sent when the database holds a value")
     void prevMonthRefund_isOnlySentWhenPresent() throws Exception {
-        DeclarationProcess without = metropolitanRow(1L, MovableType.MENKUL);
+        DeclarationProcess without = cityLevelRow(1L, MovableType.MENKUL);
         DeclarationProcess with = baseRow(2L, MovableType.MENKUL)
                 .cityCode(1).districtCode(0)
                 .prevMonthRefundAmount(new BigDecimal("42.75"))
@@ -244,8 +300,8 @@ class SbmMapperTest {
     @DisplayName("a duplicated movable type is rejected with SBM's own RISK-HAVUZU-00005")
     void duplicateMovableType_throws() {
         List<DeclarationProcess> group = List.of(
-                metropolitanRow(1L, MovableType.MENKUL),
-                metropolitanRow(2L, MovableType.MENKUL));
+                cityLevelRow(1L, MovableType.MENKUL),
+                cityLevelRow(2L, MovableType.MENKUL));
 
         assertThatThrownBy(() -> mapper.toSendRequest(group, COMPANY_CODE))
                 .isInstanceOf(SbmIntegrationException.class)
@@ -270,7 +326,7 @@ class SbmMapperTest {
 
     @Test
     void missingCompanyCode_throws() {
-        List<DeclarationProcess> group = List.of(metropolitanRow(1L, MovableType.MENKUL));
+        List<DeclarationProcess> group = List.of(cityLevelRow(1L, MovableType.MENKUL));
 
         assertSbmError(() -> mapper.toSendRequest(group, null), SbmErrorCode.RISK_HAVUZU_00002);
         assertSbmError(() -> mapper.toSendRequest(group, "  "), SbmErrorCode.RISK_HAVUZU_00002);

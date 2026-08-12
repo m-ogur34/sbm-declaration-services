@@ -15,14 +15,17 @@ import tr.com.allianz.ysv.services.entity.DeclarationProcess;
 import tr.com.allianz.ysv.services.enums.MovableType;
 import tr.com.allianz.ysv.services.enums.SbmErrorCode;
 import tr.com.allianz.ysv.services.exception.SbmIntegrationException;
-import tr.com.allianz.ysv.services.util.BuyuksehirUtil;
+import tr.com.allianz.ysv.services.util.DistrictCodeResolver;
 
 /**
  * Builds SBM request bodies out of a declaration group.
  *
- * <p>Everything SBM would reject with a RISK-HAVUZU / CORE code is checked here, before the
- * call leaves the JVM, and reported with that very same code so operators only ever deal
- * with one vocabulary.</p>
+ * <p>Only what would make the request meaningless is checked here - a missing file number,
+ * payment date, city code or movable type, and a duplicated movable type - and it is
+ * reported with SBM's own code so operators deal with one vocabulary. Everything else,
+ * including whether a city / district combination is the one SBM expects, is left to SBM:
+ * it answers RISK-HAVUZU-00007 / RISK-HAVUZU-00008 and the reason lands in
+ * {@code ERROR_DETAILS}.</p>
  */
 @Slf4j
 @Component
@@ -33,7 +36,7 @@ public class SbmMapper {
 
     /**
      * Builds the POST body. {@code ay}, {@code yil}, {@code ilKodu} and {@code ilceKodu} are
-     * sent; {@code ilceKodu} stays {@code null} for metropolitan municipalities.
+     * sent; {@code ilceKodu} is left out when the database holds no district (null or 0).
      *
      * @param group all rows sharing one declaration group key, at least one element
      * @param companyCode SBM company code ("045")
@@ -44,11 +47,15 @@ public class SbmMapper {
         requireGroupAndCompanyCode(group, companyCode);
         String fileNo = resolveFileNo(group);
         DeclarationProcess head = requirePaymentDate(group.get(0), fileNo);
+        if (head.getCityCode() == null) {
+            throw new SbmIntegrationException(SbmErrorCode.CORE_01000.getCode(),
+                    "ilKodu boş olamaz. Dosya no: " + fileNo);
+        }
         return baseRequest(head, companyCode, group, fileNo, false)
                 .ay(head.getDeclarationMonth())
                 .yil(head.getDeclarationYear())
                 .ilKodu(head.getCityCode())
-                .ilceKodu(BuyuksehirUtil.resolveDistrictCode(head.getCityCode(), head.getDistrictCode()))
+                .ilceKodu(DistrictCodeResolver.resolve(head.getDistrictCode()))
                 .build();
     }
 
@@ -69,9 +76,7 @@ public class SbmMapper {
         requireGroupAndCompanyCode(group, companyCode);
         String fileNo = resolveFileNo(group);
         DeclarationProcess head = requirePaymentDate(group.get(0), fileNo);
-        // The metropolitan rule is still evaluated: an update of a row that could never have
-        // been sent must fail here rather than silently reach SBM.
-        BuyuksehirUtil.resolveDistrictCode(head.getCityCode(), head.getDistrictCode());
+        // No city or district check: PUT does not carry those fields at all.
         return baseRequest(head, companyCode, group, fileNo, zeroAmounts).build();
     }
 

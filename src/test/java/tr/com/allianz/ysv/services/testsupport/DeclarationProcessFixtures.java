@@ -8,7 +8,7 @@ import tr.com.allianz.ysv.services.enums.ProcessStatus;
 
 /**
  * Builders for the declaration rows used across the unit tests. The default values mirror
- * the first group of the OPUS extract (Adana, metropolitan, January 2026).
+ * the first group of the OPUS extract (city 1, January 2026).
  */
 public final class DeclarationProcessFixtures {
 
@@ -18,12 +18,12 @@ public final class DeclarationProcessFixtures {
     private DeclarationProcessFixtures() {
     }
 
-    /** Metropolitan city (Adana), district code 0 as delivered by OPUS. */
-    public static DeclarationProcess metropolitanRow(Long id, MovableType movableType) {
+    /** City level declaration: DISTRICT_CODE 0, exactly as OPUS delivers it. */
+    public static DeclarationProcess cityLevelRow(Long id, MovableType movableType) {
         return baseRow(id, movableType).cityCode(1).districtCode(0).build();
     }
 
-    /** Regular city (Adıyaman) with a real district code. */
+    /** District level declaration with a real district code. */
     public static DeclarationProcess districtRow(Long id, MovableType movableType) {
         return baseRow(id, movableType).cityCode(2).districtCode(1425).build();
     }
