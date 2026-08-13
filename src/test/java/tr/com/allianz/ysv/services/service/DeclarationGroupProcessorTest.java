@@ -219,6 +219,54 @@ class DeclarationGroupProcessorTest {
     }
 
     @Test
+    @DisplayName("a ysvDosyaNo over 36 characters lands in ERROR without an SBM call")
+    void process_tooLongFileNo_marksErrorWithoutCallingSbm() {
+        DeclarationGroupProcessor withRealMapper = new DeclarationGroupProcessor(
+                declarationProcessRepository, declarationLogService, sbmClientService,
+                new SbmMapper(), sbmProperties);
+        DeclarationProcess row = baseRow(1L, MovableType.MENKUL)
+                .cityCode(1)
+                .districtCode(0)
+                .sbmFileNo("Y".repeat(37))
+                .status(ProcessStatus.NEW)
+                .build();
+        when(declarationProcessRepository.lockByIds(List.of(1L)))
+                .thenReturn(new java.util.ArrayList<>(List.of(row)));
+
+        Optional<FailureDetail> failure =
+                withRealMapper.process(OperationType.POST, false, List.of(1L), "WDA2422");
+
+        assertThat(failure).isPresent();
+        assertThat(failure.get().errorCode()).isEqualTo(SbmErrorCode.CORE_01008.getCode());
+        assertThat(row.getStatus()).isEqualTo(ProcessStatus.ERROR);
+        assertThat(row.getErrorDetails()).contains("en fazla 36 karakter");
+        verify(sbmClientService, never()).send(any());
+    }
+
+    @Test
+    @DisplayName("a sigortaSirketKodu over 3 characters lands in ERROR without an SBM call")
+    void process_tooLongCompanyCode_marksErrorWithoutCallingSbm() {
+        SbmProperties wrongCompanyCode = new SbmProperties();
+        wrongCompanyCode.setCompanyCode("2320");        // OPUS internal code, not the SBM one
+        DeclarationGroupProcessor withRealMapper = new DeclarationGroupProcessor(
+                declarationProcessRepository, declarationLogService, sbmClientService,
+                new SbmMapper(), wrongCompanyCode);
+        List<DeclarationProcess> group = newGroup(ProcessStatus.NEW);
+        when(declarationProcessRepository.lockByIds(GROUP_IDS)).thenReturn(group);
+
+        Optional<FailureDetail> failure =
+                withRealMapper.process(OperationType.POST, false, GROUP_IDS, "WDA2422");
+
+        assertThat(failure).isPresent();
+        assertThat(failure.get().errorCode()).isEqualTo(SbmErrorCode.CORE_01008.getCode());
+        assertThat(group).allSatisfy(row -> {
+            assertThat(row.getStatus()).isEqualTo(ProcessStatus.ERROR);
+            assertThat(row.getErrorDetails()).contains("en fazla 3 karakter");
+        });
+        verify(sbmClientService, never()).send(any());
+    }
+
+    @Test
     @DisplayName("a city without a district is sent: the district rule is SBM's to enforce")
     void process_missingDistrict_isSentAnyway() {
         DeclarationGroupProcessor withRealMapper = new DeclarationGroupProcessor(

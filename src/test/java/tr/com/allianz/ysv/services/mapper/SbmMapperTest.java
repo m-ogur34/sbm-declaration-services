@@ -146,6 +146,13 @@ class SbmMapperTest {
                 "\"menkulTipi\":\"1\"", "\"menkulTipi\":\"2\"");
     }
 
+    /** Integer fields of the request: JSON number, never quoted. */
+    private static final List<String> INTEGER_FIELDS = List.of("ay", "ilKodu", "ilceKodu", "yil");
+
+    /** Decimal fields of an amount item: JSON number, never quoted. */
+    private static final List<String> DECIMAL_FIELDS = List.of("alinanPrimTutari", "iptalPrimTutari",
+            "odenecekVergi", "vergiPrimTutari", "gecmisAyIadeTutari");
+
     @Test
     @DisplayName("every field keeps the JSON type the SBM contract and the WSDL agree on")
     void serializedTypesMatchTheSbmContract() throws Exception {
@@ -158,23 +165,57 @@ class SbmMapperTest {
         JsonNode json = objectMapper.readTree(
                 objectMapper.writeValueAsString(mapper.toSendRequest(List.of(row), COMPANY_CODE)));
 
-        assertThat(json.get("ay").isInt()).as("ay").isTrue();
-        assertThat(json.get("yil").isInt()).as("yil").isTrue();
-        assertThat(json.get("ilKodu").isInt()).as("ilKodu").isTrue();
-        assertThat(json.get("ilceKodu").isInt()).as("ilceKodu").isTrue();
+        // --- request root: number fields -------------------------------------------------
+        for (String field : INTEGER_FIELDS) {
+            JsonNode node = json.get(field);
+            assertThat(node).as(field + " is present").isNotNull();
+            assertThat(node.isInt()).as(field + " is a JSON integer").isTrue();
+            assertThat(node.isNumber()).as(field + " is a JSON number").isTrue();
+            assertThat(node.isTextual()).as(field + " is not a string").isFalse();
+        }
+
+        // --- request root: string fields -------------------------------------------------
         assertThat(json.get("sigortaSirketKodu").isTextual()).as("sigortaSirketKodu").isTrue();
+        assertThat(json.get("sigortaSirketKodu").asText()).isEqualTo("045");
         assertThat(json.get("ysvDosyaNo").isTextual()).as("ysvDosyaNo").isTrue();
         assertThat(json.get("sonOdemeTarihi").isTextual()).as("sonOdemeTarihi").isTrue();
         assertThat(json.get("sonOdemeTarihi").asText()).isEqualTo("2026-01-20");
 
+        // --- ysvTutarList element ---------------------------------------------------------
         JsonNode item = json.get("ysvTutarList").get(0);
-        assertThat(item.get("menkulTipi").isTextual()).as("menkulTipi").isTrue();
-        assertThat(item.get("vergiOrani").isInt()).as("vergiOrani").isTrue();
-        for (String amount : List.of("alinanPrimTutari", "iptalPrimTutari", "odenecekVergi",
-                "vergiPrimTutari", "gecmisAyIadeTutari")) {
-            assertThat(item.get(amount).isNumber()).as(amount + " is a JSON number").isTrue();
-            assertThat(item.get(amount).isTextual()).as(amount + " is not a string").isFalse();
+        assertThat(item.get("menkulTipi").isTextual()).as("menkulTipi is a string").isTrue();
+        assertThat(item.get("menkulTipi").asText()).isEqualTo("MENKUL");
+        assertThat(item.get("vergiOrani").isInt()).as("vergiOrani is a JSON integer").isTrue();
+        assertThat(item.get("vergiOrani").isTextual()).as("vergiOrani is not a string").isFalse();
+        for (String amount : DECIMAL_FIELDS) {
+            JsonNode node = item.get(amount);
+            assertThat(node).as(amount + " is present").isNotNull();
+            assertThat(node.isNumber()).as(amount + " is a JSON number").isTrue();
+            assertThat(node.isTextual()).as(amount + " is not a string").isFalse();
         }
+    }
+
+    @Test
+    @DisplayName("the PUT body keeps the same types for the fields it does carry")
+    void serializedUpdateTypesMatchTheSbmContract() throws Exception {
+        DeclarationProcess row = baseRow(1L, MovableType.GAYRIMENKUL)
+                .cityCode(34).districtCode(1425).build();
+
+        JsonNode json = objectMapper.readTree(objectMapper.writeValueAsString(
+                mapper.toUpdateRequest(List.of(row), COMPANY_CODE, false)));
+
+        assertThat(json.get("sigortaSirketKodu").isTextual()).isTrue();
+        assertThat(json.get("ysvDosyaNo").isTextual()).isTrue();
+        assertThat(json.get("sonOdemeTarihi").asText()).isEqualTo("2026-01-20");
+        for (String field : INTEGER_FIELDS) {
+            assertThat(json.get(field)).as(field + " is POST only").isNull();
+        }
+
+        JsonNode item = json.get("ysvTutarList").get(0);
+        assertThat(item.get("menkulTipi").asText()).isEqualTo("GAYRIMENKUL");
+        assertThat(item.get("vergiOrani").isInt()).isTrue();
+        assertThat(item.get("alinanPrimTutari").isNumber()).isTrue();
+        assertThat(item.get("alinanPrimTutari").isTextual()).isFalse();
     }
 
     // --- PUT --------------------------------------------------------------------------
@@ -382,6 +423,40 @@ class SbmMapperTest {
                 .build();
 
         assertSbmError(() -> mapper.toSendRequest(List.of(row), COMPANY_CODE), SbmErrorCode.CORE_01008);
+        assertSbmError(() -> mapper.toUpdateRequest(List.of(row), COMPANY_CODE, false),
+                SbmErrorCode.CORE_01008);
+        assertSbmError(() -> mapper.toQueryRequest("Y".repeat(37), COMPANY_CODE),
+                SbmErrorCode.CORE_01008);
+    }
+
+    @Test
+    @DisplayName("exactly 36 characters is still accepted")
+    void fileNoAtTheLimit_isAccepted() {
+        DeclarationProcess row = baseRow(1L, MovableType.MENKUL)
+                .cityCode(1).districtCode(0)
+                .sbmFileNo("Y".repeat(36))
+                .build();
+
+        assertThat(mapper.toSendRequest(List.of(row), COMPANY_CODE).getYsvDosyaNo())
+                .hasSize(36);
+    }
+
+    @Test
+    @DisplayName("sigortaSirketKodu longer than 3 characters is rejected with CORE-01008")
+    void tooLongCompanyCode_throws() {
+        List<DeclarationProcess> group = List.of(cityLevelRow(1L, MovableType.MENKUL));
+
+        assertSbmError(() -> mapper.toSendRequest(group, "2320"), SbmErrorCode.CORE_01008);
+        assertSbmError(() -> mapper.toUpdateRequest(group, "2320", false), SbmErrorCode.CORE_01008);
+        assertSbmError(() -> mapper.toQueryRequest("YSV202513491", "2320"), SbmErrorCode.CORE_01008);
+    }
+
+    @Test
+    @DisplayName("exactly 3 characters is still accepted")
+    void companyCodeAtTheLimit_isAccepted() {
+        List<DeclarationProcess> group = List.of(cityLevelRow(1L, MovableType.MENKUL));
+
+        assertThat(mapper.toSendRequest(group, "045").getSigortaSirketKodu()).isEqualTo("045");
     }
 
     @Test

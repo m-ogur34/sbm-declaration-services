@@ -34,6 +34,9 @@ public class SbmMapper {
     /** SBM limits {@code ysvDosyaNo} to 36 characters even though the column is wider. */
     static final int SBM_FILE_NO_MAX_LENGTH = 36;
 
+    /** SBM limits {@code sigortaSirketKodu} to 3 characters. */
+    static final int COMPANY_CODE_MAX_LENGTH = 3;
+
     /**
      * Builds the POST body. {@code ay}, {@code yil}, {@code ilKodu} and {@code ilceKodu} are
      * sent; {@code ilceKodu} is left out when the database holds no district (null or 0).
@@ -86,13 +89,16 @@ public class SbmMapper {
      * @return the query body
      */
     public SbmQueryRequest toQueryRequest(String ysvDosyaNo, String companyCode) {
+        requireCompanyCode(companyCode);
         if (ysvDosyaNo == null || ysvDosyaNo.isBlank()) {
             throw new SbmIntegrationException(SbmErrorCode.CORE_01000.getCode(),
                     "Sorgu için ysvDosyaNo zorunludur.");
         }
+        String trimmed = ysvDosyaNo.trim();
+        requireFileNoLength(trimmed);
         return SbmQueryRequest.builder()
                 .sigortaSirketKodu(companyCode)
-                .ysvDosyaNo(ysvDosyaNo.trim())
+                .ysvDosyaNo(trimmed)
                 .build();
     }
 
@@ -113,9 +119,22 @@ public class SbmMapper {
             throw new SbmIntegrationException(SbmErrorCode.CORE_01000.getCode(),
                     "Gönderilecek beyanname satırı bulunamadı.");
         }
+        requireCompanyCode(companyCode);
+    }
+
+    /**
+     * SBM declares {@code sigortaSirketKodu} as String(max 3), so a longer value is refused
+     * here rather than spent on a call that can only come back as CORE-01008.
+     */
+    private void requireCompanyCode(String companyCode) {
         if (companyCode == null || companyCode.isBlank()) {
             throw new SbmIntegrationException(SbmErrorCode.RISK_HAVUZU_00002.getCode(),
                     "Sigorta şirket kodu tanımlı değil.");
+        }
+        if (companyCode.length() > COMPANY_CODE_MAX_LENGTH) {
+            throw new SbmIntegrationException(SbmErrorCode.CORE_01008.getCode(),
+                    "sigortaSirketKodu en fazla " + COMPANY_CODE_MAX_LENGTH
+                            + " karakter olabilir: " + companyCode);
         }
     }
 
@@ -161,11 +180,19 @@ public class SbmMapper {
                     group.get(0).getCityCode(), group.get(0).getDistrictCode(),
                     fileNumbers.size(), fileNumbers);
         }
+        requireFileNoLength(fileNo);
+        return fileNo;
+    }
+
+    /**
+     * SBM declares {@code ysvDosyaNo} as String(max 36); the column is wider, so the limit
+     * has to be enforced here.
+     */
+    private void requireFileNoLength(String fileNo) {
         if (fileNo.length() > SBM_FILE_NO_MAX_LENGTH) {
             throw new SbmIntegrationException(SbmErrorCode.CORE_01008.getCode(),
                     "ysvDosyaNo en fazla " + SBM_FILE_NO_MAX_LENGTH + " karakter olabilir: " + fileNo);
         }
-        return fileNo;
     }
 
     private List<SbmAmountItem> toAmountList(List<DeclarationProcess> group, boolean zeroAmounts) {
