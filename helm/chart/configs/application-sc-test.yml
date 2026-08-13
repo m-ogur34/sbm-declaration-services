@@ -6,8 +6,16 @@ esb:
   # ESB_SERVER is exported from global.overrides.esb.server in helm/values/sc-test.yaml.
   base-url: ${ESB_SERVER:http://esb.allianz.com.tr:12000}
 
+# Every token-management setting is environment specific. These are the only values that
+# have been handed over so far; the other profiles are still waiting on the token team.
 token-management:
   base-url: https://int-sc-test-auth.allianz.com.tr
+  path: /alz-token-management/api/v1/tokens/sbm-token-generate
+  client-name: ysv
+  user-name: WDA2422_16178
+  company-code: "045"
+  connect-timeout: 5s
+  read-timeout: 30s
 
 logging:
   level:

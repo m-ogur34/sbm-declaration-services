@@ -24,6 +24,8 @@ esb:
   connect-timeout: 10s
   read-timeout: 60s
 
+# Lokal geliştirme SC-TEST token servisini kullanır. Bunlar bilinen tek ortam değerleri;
+# diğer ortamların parametreleri helm/chart/configs/application-<profil>.yml içindedir.
 token-management:
   base-url: https://int-sc-test-auth.allianz.com.tr
   path: /alz-token-management/api/v1/tokens/sbm-token-generate

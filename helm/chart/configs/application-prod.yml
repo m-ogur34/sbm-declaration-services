@@ -7,10 +7,23 @@ esb:
   # and helm/values/dr.yaml.
   base-url: ${ESB_SERVER:http://esb.allianz.com.tr:12000}
 
+# TODO: PROD token servisi parametreleri token ekibinden alınacak.
+# Boş bırakıldılar; TokenManagementProperties @NotBlank olduğu için uygulama bu profille
+# başlatılmaya çalışılırsa ayağa kalkmaz. Üretim adresi bilinmediği için TEST adresi
+# buraya kopyalanmadı.
+# sc-test örneği: base-url: https://int-sc-test-auth.allianz.com.tr
+#                 path: /alz-token-management/api/v1/tokens/sbm-token-generate
+#                 client-name: ysv
+#                 user-name: WDA2422_16178
+#                 company-code: "045"
 token-management:
-  # TODO(confirm): the production base URL of alz-token-management is still pending; the
-  # TEST address below must be replaced before the first production run.
-  base-url: https://int-sc-test-auth.allianz.com.tr
+  base-url:
+  path:
+  client-name:
+  user-name:
+  company-code:
+  connect-timeout: 5s
+  read-timeout: 30s
 
 logging:
   level:

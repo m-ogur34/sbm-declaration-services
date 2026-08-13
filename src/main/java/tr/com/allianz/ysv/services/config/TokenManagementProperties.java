@@ -11,6 +11,11 @@ import org.springframework.validation.annotation.Validated;
 /**
  * Configuration of the alz-token-management service. A brand new token is requested before
  * every SBM call; this application deliberately keeps no token cache.
+ *
+ * <p>Every value here is environment specific and carries no default on purpose: only the
+ * SC-TEST parameters are known today. A profile that has not been filled in fails Bean
+ * Validation and the application refuses to start, which is far easier to diagnose than a
+ * token call that only fails once someone triggers a declaration.</p>
  */
 @Getter
 @Setter
@@ -22,7 +27,7 @@ public class TokenManagementProperties {
     private String baseUrl;
 
     @NotBlank
-    private String path = "/alz-token-management/api/v1/tokens/sbm-token-generate";
+    private String path;
 
     @NotBlank
     private String clientName;

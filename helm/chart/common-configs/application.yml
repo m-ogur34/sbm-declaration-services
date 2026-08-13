@@ -54,13 +54,10 @@ esb:
   connect-timeout: 10s
   read-timeout: 60s
 
-token-management:
-  path: /alz-token-management/api/v1/tokens/sbm-token-generate
-  client-name: ysv
-  user-name: WDA2422_16178
-  company-code: "045"
-  connect-timeout: 5s
-  read-timeout: 30s
+# token-management is deliberately absent here: every one of its settings - base-url, path,
+# client-name, user-name, company-code - is environment specific and lives in
+# configs/application-<profile>.yml. TokenManagementProperties is @Validated with @NotBlank,
+# so a missing setting fails the application at startup instead of at the first SBM call.
 
 sbm:
   company-code: "045"
