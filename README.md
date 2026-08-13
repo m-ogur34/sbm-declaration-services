@@ -130,7 +130,7 @@ type %USERPROFILE%\.m2\settings.xml
 Doğrulama:
 
 ```cmd
-mvnw.cmd -B -o=false dependency:resolve
+mvnw.cmd -B dependency:resolve
 ```
 
 Bu komut hatasız biterse Nexus erişimi tamamdır. Projede iç Nexus'a özel bir artifact
@@ -255,11 +255,13 @@ Hata gövdesi (tüm hatalar için tek tip):
 | `prep` | `helm/chart/configs/application-prep.yml` | |
 | `prod` | `helm/chart/configs/application-prod.yml` | `live.yaml` ve `dr.yaml` kullanır |
 
-**Tüm ortaklar** `helm/chart/common-configs/application.yml` içindedir: context-path,
-logging seviyeleri, `spring.jpa`, Oracle driver, actuator endpoint'leri, ESB/token
-path'leri ve timeout'ları, `sbm.company-code` ve retry ayarı. `configs/application-<env>.yml`
-dosyalarında yalnızca ortama özgü farklar bulunur (`spring.application.name`, ESB ve
-alz-token-management base URL'leri, log seviyesi).
+**Ortak ayarlar** `helm/chart/common-configs/application.yml` içindedir: context-path,
+logging seviyeleri, `spring.jpa`, Oracle driver, actuator endpoint'leri, ESB path'leri ve
+timeout'ları, `sbm.company-code` ve retry ayarı.
+
+`configs/application-<env>.yml` dosyalarında ortama özgü olanlar bulunur:
+`spring.application.name`, ESB base URL'i, log seviyesi ve **`token-management` bloğunun
+tamamı**. Token ayarlarının hiçbiri ortak config'de tutulmaz.
 
 `src/main/resources` altında sadece `application.yml` ve `application-dev.yml` vardır.
 
@@ -279,6 +281,10 @@ SC-PROD: jdbc:oracle:thin:@//opusprod-scan.allianz-tr.local:1453/OPUSAUX
 Uygulama SBM adreslerine **doğrudan gitmez**; tüm istekler tek ESB URL'ine gider, ortam
 yönlendirmesini ESB yapar.
 
+**ESB entegrasyonu için Nexus'tan artifact çekilmiyor; ESB ortam URL'ine doğrudan
+`RestClient` ile istek atılıyor (teyit edildi).** `pom.xml`'de ESB'ye ait hiçbir bağımlılık
+yoktur.
+
 ```yaml
 esb:
   base-url: ${ESB_SERVER:http://esb.allianz.com.tr:12000}
@@ -286,9 +292,6 @@ esb:
     beyanname-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname
     sorgu-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname/sorgu
     sorgu-method: GET
-token-management:
-  base-url: https://int-sc-test-auth.allianz.com.tr
-  path: /alz-token-management/api/v1/tokens/sbm-token-generate
 sbm:
   company-code: "045"
   retry:
@@ -300,6 +303,28 @@ ESB adresi **koda gömülü değildir**. `helm/values/<ortam>.yaml` içindeki
 yukarıdaki `${ESB_SERVER:...}` ifadesi bunu okur. `esb.allianz.com.tr` için her ortamda DNS
 kaydı bulunmayabildiğinden (legacy SOAP client pom'unda bu not ve UAT için `10.70.52.149`
 IP'si var) adres IP ile override edilebilir.
+
+#### Token parametreleri ortam bazlıdır
+
+`token-management` ayarlarının **tamamı** ortama özgüdür ve yalnızca
+`helm/chart/configs/application-<profil>.yml` içinde bulunur — ortak config'de
+`token-management` başlığı **yoktur**, kodda da hiçbir varsayılan değer tutulmaz.
+
+```yaml
+token-management:
+  base-url: https://int-sc-test-auth.allianz.com.tr   # yalnızca SC-TEST'te bilinen değerler
+  path: /alz-token-management/api/v1/tokens/sbm-token-generate
+  client-name: ysv
+  user-name: WDA2422_16178
+  company-code: "045"
+  connect-timeout: 5s
+  read-timeout: 30s
+```
+
+`TokenManagementProperties` sınıfı `@Validated` ve zorunlu alanları `@NotBlank`. Bir profilde
+bu parametreler doldurulmamışsa **uygulama başlangıçta hata verir ve ayağa kalkmaz**; eksiklik
+ilk beyanname gönderiminde değil, deploy anında görünür. `sc-uat`, `prep` ve `prod`
+dosyalarında anahtarlar bilerek boş bırakıldı (bkz. "Açık Konular" #5).
 
 Her istekten önce yeni token alınır (**cache yoktur**). SBM'ye giden header'lar token
 yanıtından üretilir:
@@ -421,47 +446,44 @@ Vault yolları: `sc-test → kv/data/TEST`, `sc-uat → kv/data/UAT`, `prep → 
    diyor ama gövdeli bir request örneği veriyor. `esb.ysv.sorgu-method` property'si ile
    `GET`/`POST` arasında değiştirilebilir bırakıldı; `SbmClientService` iki varyantı da
    destekliyor. SBM/ESB ekibinden teyit alınmalı.
-2. **ESB path'leri.** ESB'nin SBM path'lerini birebir mi proxy'lediği, yoksa kendi path'ini
-   mi beklediği teyit edilmedi. Path'ler property'den yönetiliyor
-   (`esb.ysv.beyanname-path`, `esb.ysv.sorgu-path`), hard-code edilmedi.
-3. **`gecmisAyIadeTutari`.** Güncel SBM dökümanında alan `ysvTutarList`'in her elemanında
+2. **`gecmisAyIadeTutari`.** Güncel SBM dökümanında alan `ysvTutarList`'in her elemanında
    yer alıyor; kod da onu tutar kalemine (`SbmAmountItem`) koyuyor, root'a değil. DB'de
    değer varsa gönderiliyor, yoksa `@JsonInclude(NON_NULL)` ile payload'dan çıkarılıyor.
    Gerçek bir gönderimle uçtan uca doğrulanmadı.
-4. **Token `functionName` değeri.** Örnek istekte `"test"` geçiyor. Uygulama operasyona göre
+3. **Token `functionName` değeri.** Örnek istekte `"test"` geçiyor. Uygulama operasyona göre
    `ysv-beyanname-gonder` / `-guncelle` / `-sorgu` gönderiyor; alz-token-management ekibinden
    beklenen değer teyit edilmeli.
-5. **PROD token servisi base URL'i.** Elimizde yalnızca TEST adresi
-   (`https://int-sc-test-auth.allianz.com.tr`) var. `application-prep.yml` ve
-   `application-prod.yml` şimdilik bu adresi taşıyor; ilk üretim koşusundan önce
-   değiştirilmeli.
-6. **Alan tipleri: number mı string mi?** SBM'nin güncel döküman örneğinde tüm değerler JSON
-   **string** olarak gösteriliyor (`"ay": "5"`, `"ilKodu": "34"`). Biz **number**
-   gönderiyoruz, çünkü legacy SOAP WSDL şeması bu alanları numerik tanımlıyor ve DB
-   kolonları da `NUMBER`. SBM `CORE-00005` (format hatası) dönerse çözüm: ilgili alanlara
+4. **alz-token-management parametreleri.** Parametrelerin **tamamı** (`base-url`, `path`,
+   `client-name`, `user-name`, `company-code`) ortam bazlıdır ve
+   `helm/chart/configs/application-<profil>.yml` içinde tutulur; ortak config'de
+   `token-management` başlığı hiç yoktur. Yalnızca **SC-TEST** değerleri biliniyor;
+   `sc-uat`, `prep` ve `prod` değerleri token ekibinden alınacak. O profillerde anahtarlar
+   boş bırakıldı — değer uydurulmadı. `TokenManagementProperties` `@Validated` +
+   `@NotBlank` olduğu için eksik ayarla uygulama **başlangıçta hata verir ve ayağa
+   kalkmaz**; sorun ilk beyanname gönderiminde değil, deploy anında görünür.
+5. **Alan tipleri: number mı string mi?** SBM dökümanının alan türü tablosu, PDF'deki istek
+   örneği, sorgu yanıt örneği ve legacy SOAP WSDL stub'ları sayısal alanların JSON
+   **number** olduğunu doğruluyor. Dökümanın güncellenmiş istek örneğinde değerler tırnaklı
+   gösteriliyor; bu, tip tablosuyla çelişen bir örnek olarak değerlendirildi ve number
+   tercih edildi. `CORE-00005` alınırsa çözüm: ilgili alanlara
    `@JsonFormat(shape = JsonFormat.Shape.STRING)` eklemek — DTO'lar tek noktada
    (`SbmDeclarationRequest`, `SbmAmountItem`) olduğu için tek satırlık bir değişiklik.
-7. **İlçe kodu doğrulaması uygulamada yapılmıyor.** Kaynak Excel iş birimi tarafından
+6. **İlçe kodu doğrulaması uygulamada yapılmıyor.** Kaynak Excel iş birimi tarafından
    düzenleniyor ve hatalı kayıtlar SBM'nin `RISK-HAVUZU-00007` / `RISK-HAVUZU-00008`
    hatalarıyla yakalanıyor. Uygulamada büyükşehir listesi tutulmuyor; tek kural
    `DISTRICT_CODE` null/0 ise alanın gönderilmemesi.
-8. **ESB path namespace'i.** ESB kendi path namespace'ini kullanıyor olabilir: legacy SOAP'ta
+7. **ESB path namespace'i.** ESB kendi path namespace'ini kullanıyor olabilir: legacy SOAP'ta
    `YsvServices/ProxyService/YsvBeyanService` deseni kullanılmış. Bizim mevcut path'lerimiz
    SBM'nin kendi path'i (`/api/rest/vergi-beyan-rs/v10/ysv-beyanname`); ESB ekibinden teyit
    edilmeli, aksi halde `CORE-00009` (kaynak bulunamadı) alınır. Path'ler property'den
    yönetildiği için (`esb.ysv.beyanname-path`, `esb.ysv.sorgu-path`) kod değişikliği
    gerekmez.
-9. **`ysv-services-rest-client` artifact'ı.** Nexus'ta olup olmadığı teyit edilecek; varsa
-   içindeki ESB path'i ve DTO'lar bizimkilerle karşılaştırılacak. Şu an bağımlılık
-   `pom.xml`'de **yok** — ESB çağrıları `RestClient` ile yapılıyor ve SDK koddan
-   kullanılmıyor; artifact bulunamazsa build derleme başlamadan kırılacağı için
-   eklenmedi.
-10. **ESB DNS kaydı.** Legacy SOAP client pom'unda "esb.allianz.com.tr olarak bir dns kaydı
-    bulunmamakta" notu ve UAT için `10.70.52.149` IP'si var. Adres bu yüzden
-    `${ESB_SERVER:...}` üzerinden okunuyor ve `helm/values/<ortam>.yaml` içindeki
-    `global.overrides.esb.server` ile IP olarak override edilebiliyor. Her ortamda hangi
-    adresin geçerli olduğu ESB ekibinden alınmalı.
-11. **`global.overrides.esb.server` → `ESB_SERVER` eşlemesi — DOĞRULANMAMIŞ VARSAYIM.**
+8. **ESB DNS kaydı.** Legacy SOAP client pom'unda "esb.allianz.com.tr olarak bir dns kaydı
+   bulunmamakta" notu ve UAT için `10.70.52.149` IP'si var. Adres bu yüzden
+   `${ESB_SERVER:...}` üzerinden okunuyor ve `helm/values/<ortam>.yaml` içindeki
+   `global.overrides.esb.server` ile IP olarak override edilebiliyor. Her ortamda hangi
+   adresin geçerli olduğu ESB ekibinden alınmalı.
+9. **`global.overrides.esb.server` → `ESB_SERVER` eşlemesi — DOĞRULANMAMIŞ VARSAYIM.**
     Uygulama `esb.base-url` değerini `${ESB_SERVER:...}` ifadesiyle okuyor, yani pod'da
     `ESB_SERVER` adında bir ortam değişkeni bekliyor. `helm/chart/values.yaml` içindeki
     `global.overrides.esb.server` alanını Allianz `springboot-deployment` subchart'ının bu
