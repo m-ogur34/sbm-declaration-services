@@ -10,7 +10,7 @@ REST servisi.
 | Main class | `DeclarationServiceApplication` |
 | Java | 21 |
 | Spring Boot | 3.3.5 |
-| Build | Maven (wrapper dahil) |
+| Build | Maven |
 | HTTP client | Spring `RestClient` (Apache HttpClient 5 üzerinde) |
 | DB | Oracle (`ojdbc11`) + Spring Data JPA, tüm profillerde |
 | Context path | `/sbm-declaration-services` |
@@ -130,21 +130,20 @@ type %USERPROFILE%\.m2\settings.xml
 Doğrulama:
 
 ```cmd
-mvnw.cmd -B dependency:resolve
+mvn -B dependency:resolve
 ```
 
 Bu komut hatasız biterse Nexus erişimi tamamdır. Projede iç Nexus'a özel bir artifact
 bağımlılığı yoktur; tüm bağımlılıklar Maven Central'ın Nexus proxy'sinden çözülür.
 
-> Maven Wrapper varsayılan olarak dağıtımı `repo.maven.apache.org` adresinden indirir.
-> VDI'da dışarı çıkış kapalıysa `.mvn/wrapper/maven-wrapper.properties` içindeki
-> `distributionUrl` / `wrapperUrl` değerlerini Nexus proxy URL'i ile değiştir veya
-> `MVNW_REPOURL` ortam değişkenini Nexus'a ayarla.
+> Proje Maven Wrapper kullanmaz; `mvn` PATH'teki yerel Maven kurulumunu çağırır ve
+> bağımlılık çözümü doğrudan `%USERPROFILE%\.m2\settings.xml` içindeki mirror/server
+> tanımlarına göre Nexus proxy'sinden yapılır.
 
 ### 2.4 Derleme ve test
 
 ```cmd
-mvnw.cmd clean verify
+mvn clean verify
 ```
 
 Bu komut derler, testleri çalıştırır, JaCoCo raporunu üretir ve kapsam eşiğini kontrol eder.
@@ -159,7 +158,7 @@ okunur:
 set SPRING_DATASOURCE_URL=jdbc:oracle:thin:@//opusuat-scan.allianz-tr.local:1521/OPSSCUAT
 set SPRING_DATASOURCE_USERNAME=<kullanici>
 set SPRING_DATASOURCE_PASSWORD=<sifre>
-mvnw.cmd spring-boot:run
+mvn spring-boot:run
 ```
 
 - Swagger UI: <http://localhost:8080/sbm-declaration-services/swagger-ui.html>
