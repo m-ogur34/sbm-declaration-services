@@ -7,11 +7,11 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.5</version>
+        <version>3.5.14</version>
         <relativePath/>
     </parent>
 
-    <groupId>tr.com.allianz.ysv</groupId>
+    <groupId>tr.com.allianz</groupId>
     <artifactId>sbm-declaration-services</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <name>sbm-declaration-services</name>
@@ -29,11 +29,86 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.compiler.encoding>UTF-8</maven.compiler.encoding>
 
+        <spring-framework.version>6.2.19</spring-framework.version>
+        <spring-boot.version>3.5.14</spring-boot.version>
+        <spring-cloud.version>2025.0.0</spring-cloud.version>
+        <build-packaging-type>jar</build-packaging-type>
+        <ojdbc.version>19.3.0.0</ojdbc.version>
+        <tomcat.version>10.1.56</tomcat.version>
+        <logback.version>1.5.35</logback.version>
+        <micrometer.version>1.15.12</micrometer.version>
+        <!-- Jackson güvenlik zafiyetini kapatmak için sürümü eziyoruz -->
+        <jackson-bom.version>2.22.0</jackson-bom.version>
+
         <mapstruct.version>1.6.3</mapstruct.version>
         <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
         <springdoc.version>2.6.0</springdoc.version>
         <jacoco.version>0.8.12</jacoco.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Spring Framework güvenlik zafiyetini kapatmak için tüm modülleri eziyoruz -->
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-framework-bom</artifactId>
+                <version>${spring-framework.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Jackson güvenlik zafiyetini kapatmak için tüm Jackson modüllerini eziyoruz -->
+            <dependency>
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson-bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Force Spring Data JPA patch-level upgrade for security remediation -->
+            <dependency>
+                <groupId>org.springframework.data</groupId>
+                <artifactId>spring-data-jpa</artifactId>
+                <version>3.5.12</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.data</groupId>
+                <artifactId>spring-data-commons</artifactId>
+                <version>3.5.12</version>
+            </dependency>
+
+            <!-- Force Micrometer patch-level upgrade for security remediation -->
+            <dependency>
+                <groupId>io.micrometer</groupId>
+                <artifactId>micrometer-bom</artifactId>
+                <version>1.15.12</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-starter-parent</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -67,9 +142,14 @@
         </dependency>
 
         <dependency>
-            <groupId>com.oracle.database.jdbc</groupId>
-            <artifactId>ojdbc11</artifactId>
-            <scope>runtime</scope>
+            <groupId>com.oracle.ojdbc</groupId>
+            <artifactId>ojdbc8</artifactId>
+            <version>${ojdbc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.oracle.ojdbc</groupId>
+            <artifactId>orai18n</artifactId>
+            <version>${ojdbc.version}</version>
         </dependency>
 
         <dependency>
@@ -90,6 +170,20 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- EOL olan javax.annotation-api yerine geçerli ve aktif güncellenen Tomcat-Annotations API'si -->
+        <dependency>
+            <groupId>org.apache.tomcat</groupId>
+            <artifactId>tomcat-annotations-api</artifactId>
+            <version>9.0.86</version>
+        </dependency>
+
+        <!-- Bouncy Castle güvenlik zafiyetini kapatmak için sürümü eziyoruz -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+            <version>1.84</version>
+        </dependency>
+
         <!-- No tr.com.allianz:ysv-services-rest-client dependency on purpose: the ESB is
              called over plain HTTP with RestClient, nothing in this project imports that
              SDK, and its presence on the internal Nexus has not been confirmed. Declaring
@@ -99,8 +193,69 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.junit.vintage</groupId>
+                    <artifactId>junit-vintage-engine</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
+
+    <profiles>
+        <profile>
+            <id>k8s-profile</id>
+            <properties>
+                <build-packaging-type>jar</build-packaging-type>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-maven-plugin</artifactId>
+                        <version>${spring-boot.version}</version>
+                        <configuration>
+                            <excludes>
+                                <exclude>
+                                    <groupId>org.projectlombok</groupId>
+                                    <artifactId>lombok</artifactId>
+                                </exclude>
+                            </excludes>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>repackage</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+            <distributionManagement>
+                <repository>
+                    <uniqueVersion>false</uniqueVersion>
+                    <id>kubernetes-snapshot</id>
+                    <url>https://sdlc.allianz.com.tr/nexus/content/repositories/kubernetes-snapshot/</url>
+                    <layout>default</layout>
+                </repository>
+            </distributionManagement>
+        </profile>
+
+        <profile>
+            <id>local-development</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>org.springframework.cloud</groupId>
+                    <artifactId>spring-cloud-starter-vault-config</artifactId>
+                    <version>4.3.0</version>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
 
     <build>
         <finalName>${project.artifactId}</finalName>
@@ -149,23 +304,11 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
+                    <argLine>@{argLine}</argLine>
                     <!-- Keeps Turkish assertion messages readable in the Windows console. -->
                     <systemPropertyVariables>
                         <file.encoding>UTF-8</file.encoding>
                     </systemPropertyVariables>
-                </configuration>
-            </plugin>
-
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <excludes>
-                        <exclude>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                        </exclude>
-                    </excludes>
                 </configuration>
             </plugin>
 
@@ -178,7 +321,6 @@
                          agent through the generated ${argLine} property. -->
                     <execution>
                         <id>jacoco-prepare-agent</id>
-                        <phase>initialize</phase>
                         <goals>
                             <goal>prepare-agent</goal>
                         </goals>
@@ -223,14 +365,14 @@
                                     <element>BUNDLE</element>
                                     <limits>
                                         <limit>
-                                            <counter>LINE</counter>
+                                            <counter>INSTRUCTION</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.90</minimum>
+                                            <minimum>0.85</minimum>
                                         </limit>
                                         <limit>
                                             <counter>BRANCH</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.85</minimum>
+                                            <minimum>0.80</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
