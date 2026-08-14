@@ -304,11 +304,10 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <argLine>@{argLine}</argLine>
-                    <!-- Keeps Turkish assertion messages readable in the Windows console. -->
-                    <systemPropertyVariables>
-                        <file.encoding>UTF-8</file.encoding>
-                    </systemPropertyVariables>
+                    <!-- Keeps Turkish assertion messages readable in the Windows console; must be
+                         a JVM arg (-D), not a systemPropertyVariable, since file.encoding is read
+                         before the JVM starts and surefire cannot set it as a system property. -->
+                    <argLine>@{argLine} -Dfile.encoding=UTF-8</argLine>
                 </configuration>
             </plugin>
 

@@ -39,6 +39,7 @@ class RestClientConfigTest {
     void tokenRestClient_isBuiltFromTheTokenTimeouts() {
         TokenManagementProperties properties = new TokenManagementProperties();
         properties.setBaseUrl("http://token.test.local");
+        properties.setPath("/alz-token-management/api/v1/tokens/sbm-token-generate");
         properties.setConnectTimeout(Duration.ofSeconds(1));
         properties.setReadTimeout(Duration.ofSeconds(2));
 
