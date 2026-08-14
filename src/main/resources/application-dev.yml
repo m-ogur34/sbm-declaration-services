@@ -1,16 +1,31 @@
 # Local development profile. It targets the SC-UAT Oracle instance; no in-memory database
 # is used anywhere, so the schema always matches production.
-# Export before starting the application:
-#   SPRING_DATASOURCE_URL=jdbc:oracle:thin:@//opusuat-scan.allianz-tr.local:1521/OPSSCUAT
-#   SPRING_DATASOURCE_USERNAME=<user>
-#   SPRING_DATASOURCE_PASSWORD=<password>
+#
+# DB credentials come from Vault (spring.cloud.vault below, default-context
+# DEV/apps/sbm-declaration-services). The SPRING_DATASOURCE_* placeholders are kept as a
+# fallback / k8s-environment path, where the Vault agent template exports them as env vars
+# instead (see helm/values/<ortam>.yaml).
 spring:
+  config:
+    import: vault://
   datasource:
     url: ${SPRING_DATASOURCE_URL:}
     username: ${SPRING_DATASOURCE_USERNAME:}
     password: ${SPRING_DATASOURCE_PASSWORD:}
   jpa:
     show-sql: true
+  cloud:
+    vault:
+      host: int-vault-local-test.allianz.com.tr
+      port: 443
+      scheme: https
+      authentication: token
+      enabled: true
+      kv:
+        backend: kv
+        enabled: true
+      default-context: DEV/apps/sbm-declaration-services
+      application-name: DEV/apps/sbm-declaration-services
 
 esb:
   # ESB_SERVER lets the address be overridden without touching the image; there is no DNS

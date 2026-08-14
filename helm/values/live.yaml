@@ -5,6 +5,9 @@ global:
       server: ~
 
 springboot-deployment:
+  gateway:
+    migration:
+      mode: istio
   app:
     env:
       # ALTERNATİF ESB adresi tanımı. global.overrides.esb.server -> ESB_SERVER
