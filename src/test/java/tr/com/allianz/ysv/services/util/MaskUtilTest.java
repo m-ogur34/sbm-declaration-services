@@ -8,7 +8,7 @@ class MaskUtilTest {
 
     @Test
     void mask_keepsFirstTenCharacters() {
-        assertThat(MaskUtil.mask("eyJhbGciOiJIUzUxMiJ9.payload")).isEqualTo("eyJhbGciOi***");
+        assertThat(MaskUtil.mask("MOCK-TEST-ACCESS-TOKEN-VALUE")).isEqualTo("MOCK-TEST-***");
     }
 
     @Test
