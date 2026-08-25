@@ -7,9 +7,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * Body of the SBM {@code ysv-beyanname/sorgu} call.
- */
 @Getter
 @Setter
 @Builder
