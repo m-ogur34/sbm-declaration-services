@@ -7,10 +7,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * Identity block returned by alz-token-management; it feeds the {@code Requester-ID-Type}
- * and {@code Requester-ID-No} headers SBM expects.
- */
 @Getter
 @Setter
 @Builder
