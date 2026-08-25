@@ -25,12 +25,6 @@ import tr.com.allianz.ysv.services.dto.response.ProcessView;
 import tr.com.allianz.ysv.services.enums.ProcessStatus;
 import tr.com.allianz.ysv.services.service.DeclarationService;
 
-/**
- * REST API of the YSV declaration workflow.
- *
- * <p>The triggering user is taken from the {@code X-User-Name} header, which the internal
- * gateway populates; it is persisted in {@code SENT_BY_USER} / {@code UPDATED_BY_USER}.</p>
- */
 @RestController
 @RequestMapping("/api/v1/declarations")
 @RequiredArgsConstructor
