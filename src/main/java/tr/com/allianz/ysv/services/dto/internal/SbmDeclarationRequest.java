@@ -10,14 +10,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * Body of the SBM {@code ysv-beyanname} POST (send) and PUT (update) calls.
- *
- * <p>{@code ay}, {@code yil}, {@code ilKodu} and {@code ilceKodu} are POST-only fields. The
- * update mapping leaves them {@code null} and {@code NON_NULL} inclusion keeps them out of
- * the PUT body. {@code ilceKodu} is also {@code null} for metropolitan municipalities on
- * POST (RISK-HAVUZU-00007).</p>
- */
 @Getter
 @Setter
 @Builder
