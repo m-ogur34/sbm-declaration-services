@@ -9,10 +9,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * One element of SBM's {@code ysvTutarList}. There is exactly one element per movable type
- * inside a declaration group (SBM rejects duplicates with RISK-HAVUZU-00005).
- */
 @Getter
 @Setter
 @Builder
@@ -40,9 +36,5 @@ public class SbmAmountItem {
     /** Decimal. DB: {@code TAX_PREMIUM_AMOUNT}. */
     private BigDecimal vergiPrimTutari;
 
-    /**
-     * Decimal. DB: {@code PREV_MONTH_REFUND_AMOUNT}. Belongs to the amount item, not to the
-     * request root. Sent only when the database holds a value.
-     */
     private BigDecimal gecmisAyIadeTutari;
 }
