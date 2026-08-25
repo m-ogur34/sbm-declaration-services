@@ -9,11 +9,6 @@ import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
-/**
- * ESB (OSB layer) routing configuration. The application never talks to rs.sbm.org.tr
- * directly; a single ESB base URL is used for every environment and the ESB itself routes
- * to the matching SBM endpoint.
- */
 @Getter
 @Setter
 @Validated
@@ -53,11 +48,6 @@ public class EsbProperties {
         @NotBlank
         private String sorguPath = "/api/rest/vergi-beyan-rs/v10/ysv-beyanname/sorgu";
 
-        /**
-         * TODO(confirm): the SBM document describes the query function as GET but shows a
-         * request with a body. Keep this switchable until SBM confirms which verb the ESB
-         * forwards; both variants are implemented in SbmClientService.
-         */
         @Pattern(regexp = "GET|POST")
         private String sorguMethod = "GET";
     }
