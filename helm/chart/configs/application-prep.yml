@@ -3,25 +3,14 @@ spring:
     name: sbm-declaration-services
 
 esb:
-  # ESB_SERVER is exported from global.overrides.esb.server in helm/values/prep.yaml.
   base-url: ${ESB_SERVER:http://esb.allianz.com.tr:12000}
 
-# TODO: PREP token servisi parametreleri token ekibinden alınacak.
-# Boş bırakıldılar; TokenManagementProperties @NotBlank olduğu için uygulama bu profille
-# başlatılmaya çalışılırsa ayağa kalkmaz. Değer uydurulmadı.
-# sc-test örneği: base-url: https://int-sc-test-auth.allianz.com.tr
-#                 path: /alz-token-management/api/v1/tokens/sbm-token-generate
-#                 client-name: ysv
-#                 user-name: WDA2422_16178
-#                 company-code: "045"
 token-management:
-  base-url:
-  path:
-  client-name:
-  user-name:
-  company-code:
-  connect-timeout: 5s
-  read-timeout: 30s
+base-url: https://int-prep-auth.allianz.com.tr
+path: /alz-token-management/api/v1/tokens/sbm-token-generate
+client-name: ysv
+user-name: WDA2422_16178
+company-code: "045"
 
 logging:
   level:
