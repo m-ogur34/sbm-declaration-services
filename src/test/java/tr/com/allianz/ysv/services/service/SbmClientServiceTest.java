@@ -51,6 +51,7 @@ class SbmClientServiceTest {
     private static final String BEYANNAME_URL = BASE_URL + "/api/rest/vergi-beyan-rs/v10/ysv-beyanname";
     private static final String SORGU_URL = BEYANNAME_URL + "/sorgu";
     private static final String TRANSACTION_ID = "9d0e6c2e-6f2b-4c2a-9d3e-a1b2c3d4e5f6";
+    private static final String ACCESS_TOKEN = "MOCK-TEST-ACCESS-TOKEN-VALUE";
 
     private static final String SUCCESS_BODY =
             "{\"result\":true,\"status\":200,\"ysvDosyaNo\":\"YSV202513491\"}";
@@ -92,7 +93,7 @@ class SbmClientServiceTest {
 
         tokenManagementService = mock(TokenManagementService.class);
         when(tokenManagementService.generateToken(any())).thenReturn(TokenResponse.builder()
-                .accessToken("eyJhbGciOiJIUzUxMiJ9.header.signature")
+                .accessToken(ACCESS_TOKEN)
                 .clientCredentials(ClientCredentials.builder()
                         .clientIdentityType(1)
                         .clientIdNumber("86773997310")
@@ -119,7 +120,7 @@ class SbmClientServiceTest {
     void send_success() {
         server.expect(requestTo(BEYANNAME_URL))
                 .andExpect(method(HttpMethod.POST))
-                .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer eyJhbGciOiJIUzUxMiJ9.header.signature"))
+                .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + ACCESS_TOKEN))
                 .andExpect(header("Requester-ID-Type", "1"))
                 .andExpect(header("Requester-ID-No", "86773997310"))
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
