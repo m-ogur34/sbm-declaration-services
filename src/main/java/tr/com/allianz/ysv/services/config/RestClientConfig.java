@@ -14,15 +14,6 @@ import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
-/**
- * {@link RestClient} beans used to talk to the ESB and to alz-token-management.
- *
- * <p>Apache HttpClient 5 is used on purpose: {@code HttpURLConnection} silently drops the
- * body of a GET request and the SBM query function is documented as a GET carrying a body.</p>
- *
- * <p>No base URL is configured on the clients; the services build absolute URLs from their
- * own properties so that the target address is always explicit in the logs.</p>
- */
 @Configuration(proxyBeanMethods = false)
 public class RestClientConfig {
 
@@ -43,11 +34,6 @@ public class RestClientConfig {
                 .build();
     }
 
-    /**
-     * @param connectTimeout time allowed to establish the TCP connection
-     * @param readTimeout    time allowed between the request and the full response
-     * @return a request factory backed by a pooled Apache HttpClient 5 instance
-     */
     static ClientHttpRequestFactory requestFactory(Duration connectTimeout, Duration readTimeout) {
         ConnectionConfig connectionConfig = ConnectionConfig.custom()
                 .setConnectTimeout(Timeout.ofMilliseconds(connectTimeout.toMillis()))
