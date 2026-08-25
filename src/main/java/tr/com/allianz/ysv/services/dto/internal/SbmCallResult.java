@@ -6,11 +6,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * Outcome of a single SBM call, carrying everything the audit log and the process status
- * update need. Transport failures are represented here as well, so callers never have to
- * catch exceptions from {@code SbmClientService}.
- */
 @Getter
 @Setter
 @Builder
