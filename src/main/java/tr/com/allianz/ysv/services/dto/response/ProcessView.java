@@ -4,9 +4,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * Read model of a declaration row for the listing endpoint / future UI.
- */
 public record ProcessView(Long id,
                           Integer declarationYear,
                           Integer declarationMonth,
