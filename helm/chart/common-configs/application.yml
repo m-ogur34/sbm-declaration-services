@@ -1,9 +1,5 @@
-# Settings shared by every environment. Anything that differs per environment lives in
-# configs/application-<profile>.yml instead.
 spring:
   datasource:
-    # URL, username and password come from the Vault template as
-    # SPRING_DATASOURCE_URL / _USERNAME / _PASSWORD environment variables.
     driver-class-name: oracle.jdbc.OracleDriver
     hikari:
       pool-name: sbm-declaration-pool
@@ -53,11 +49,6 @@ esb:
     sorgu-method: GET
   connect-timeout: 10s
   read-timeout: 60s
-
-# token-management is deliberately absent here: every one of its settings - base-url, path,
-# client-name, user-name, company-code - is environment specific and lives in
-# configs/application-<profile>.yml. TokenManagementProperties is @Validated with @NotBlank,
-# so a missing setting fails the application at startup instead of at the first SBM call.
 
 sbm:
   company-code: "045"
