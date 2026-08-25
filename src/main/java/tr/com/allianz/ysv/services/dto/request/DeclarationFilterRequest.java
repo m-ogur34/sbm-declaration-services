@@ -5,15 +5,6 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.util.List;
 
-/**
- * Selects the declaration rows a batch operation should work on. All fields are optional;
- * when {@code processIds} is given the other filters are ignored.
- *
- * @param year       declaration year, e.g. 2026
- * @param month      declaration month, 1-12
- * @param cityCode   SBM city code
- * @param processIds explicit {@code ALZ_SBM_DECL_PROCESS.ID} values
- */
 @Schema(description = "Beyanname toplu işlem filtresi")
 public record DeclarationFilterRequest(
 
