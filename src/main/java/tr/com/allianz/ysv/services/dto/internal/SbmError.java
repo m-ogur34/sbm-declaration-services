@@ -8,10 +8,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * SBM's {@code error} object. The timestamp is kept as the raw string SBM sent so that an
- * unexpected format can never make the whole response unparsable.
- */
 @Getter
 @Setter
 @Builder
