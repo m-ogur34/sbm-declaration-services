@@ -44,6 +44,14 @@
         <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
         <springdoc.version>2.6.0</springdoc.version>
         <jacoco.version>0.8.12</jacoco.version>
+        <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.coverage.exclusions>
+            **/DeclarationServiceApplication.java,
+            **/dto/**,
+            **/entity/**,
+            **/config/*Properties.java,
+            **/exception/ErrorResponse.java
+        </sonar.coverage.exclusions>
     </properties>
 
     <dependencyManagement>
@@ -326,7 +334,7 @@
                     </execution>
                     <execution>
                         <id>jacoco-report</id>
-                        <phase>verify</phase>
+                        <phase>test</phase>
                         <goals>
                             <goal>report</goal>
                         </goals>
@@ -344,7 +352,7 @@
                     </execution>
                     <execution>
                         <id>jacoco-check</id>
-                        <phase>verify</phase>
+                        <phase>test</phase>
                         <goals>
                             <goal>check</goal>
                         </goals>
