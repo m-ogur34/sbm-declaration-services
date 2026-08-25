@@ -7,9 +7,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * One entry of SBM's {@code error.reasons} array.
- */
 @Getter
 @Setter
 @Builder
