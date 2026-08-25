@@ -27,13 +27,15 @@ class TokenManagementServiceTest {
 
     private static final String TOKEN_URL =
             "http://token.test.local/alz-token-management/api/v1/tokens/sbm-token-generate";
+    private static final String ACCESS_TOKEN = "MOCK-TEST-ACCESS-TOKEN-VALUE";
 
     private static final String SUCCESS_BODY = """
-            {
-              "accessToken": "eyJhbGciOiJIUzUxMiJ9.header.signature",
-              "clientCredentials": { "clientIdentityType": 1, "clientIdNumber": "86773997310" }
-            }
-            """;
+        {
+          "accessToken": "%s",
+          "clientCredentials": { "clientIdentityType": 1, "clientIdNumber": "86773997310" }
+        }
+        """.formatted(ACCESS_TOKEN);
+
 
     private MockRestServiceServer server;
     private TokenManagementService service;
@@ -69,7 +71,7 @@ class TokenManagementServiceTest {
 
         TokenResponse response = service.generateToken(OperationType.POST);
 
-        assertThat(response.getAccessToken()).startsWith("eyJhbGciOiJIUzUxMiJ9");
+        assertThat(response.getAccessToken()).isEqualTo(ACCESS_TOKEN);
         assertThat(response.getClientCredentials().getClientIdentityType()).isEqualTo(1);
         assertThat(response.getClientCredentials().getClientIdNumber()).isEqualTo("86773997310");
         server.verify();
