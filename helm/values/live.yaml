@@ -1,7 +1,6 @@
 global:
   overrides:
     esb:
-      # null = use the default in chart/configs/application-prod.yml.
       server: ~
 
 springboot-deployment:
@@ -10,14 +9,6 @@ springboot-deployment:
       mode: istio
   app:
     env:
-      # ALTERNATİF ESB adresi tanımı. global.overrides.esb.server -> ESB_SERVER
-      # eşlemesini springboot-deployment subchart'ının yaptığı VARSAYILDI; sözleşmesi
-      # doğrulanmadı (README "Açık Konular" #11). Varsayım tutmazsa yukarıdaki
-      # global.overrides.esb.server yerine değişkeni burada doğrudan tanımla.
-      # Anahtar adı subchart sözleşmesine göre custom / variables / extraEnv olabilir:
-      # custom:
-      #   - name: ESB_SERVER
-      #     value: http://esb.allianz.com.tr:12000
       java:
         args: -Xms4g -Xmx4g -XX:+FlightRecorder
       springboot:
