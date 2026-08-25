@@ -6,9 +6,6 @@ import io.swagger.v3.oas.models.info.Info;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/**
- * springdoc-openapi metadata for the declaration API.
- */
 @Configuration(proxyBeanMethods = false)
 public class OpenApiConfig {
 
