@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: sbm-declaration-services
+
+esb:
+  base-url: ${ESB_SERVER:http://esb.allianz.com.tr:12000}
+
+token-management:
+base-url: https://int-prep-auth.allianz.com.tr
+path: /alz-token-management/api/v1/tokens/sbm-token-generate
+client-name: ysv
+user-name: WDA2422_16178
+company-code: "045"
+
+logging:
+  level:
+    tr.com.allianz.ysv.services: INFO

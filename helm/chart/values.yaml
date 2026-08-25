@@ -1,0 +1,68 @@
+global:
+  repoName: sbm-declaration-services
+  bundleName: sbm-declaration-services
+  overrides:
+    bundleName: ~
+    esb:
+      server: ~
+    chart:
+      ingress:
+        skipHostPrefix: false
+
+springboot-deployment:
+  enabled: true
+  deployment:
+    podLogger:
+      enabled: true
+      template:
+        - image: harbor.allianz-tr.local/allianz-release/pod-logger:v2
+          name: pod-logger
+          resources:
+            requests:
+              cpu: '1m'
+              memory: 12Mi
+          volumeMounts:
+            - mountPath: /tmp
+              name: log-path
+              readOnly: true
+  app:
+    configs:
+      enabled: true
+    contextPath: sbm-declaration-services
+    image:
+      repository:
+        group: internal-release
+        name: sbm-declaration-services
+    probes:
+      enabled: true
+      template:
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /sbm-declaration-services/actuator/health/liveness
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 2
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /sbm-declaration-services/actuator/health/readiness
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 3
+          successThreshold: 1
+          timeoutSeconds: 2
+        startupProbe:
+          failureThreshold: 30
+          httpGet:
+            path: /sbm-declaration-services/actuator/health/readiness
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 3
+          successThreshold: 1
+          timeoutSeconds: 2

@@ -1,0 +1,75 @@
+package tr.com.allianz.ysv.services.exception;
+
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import tr.com.allianz.ysv.services.enums.SbmErrorCode;
+
+/**
+ * Renders every failure as one {@link ErrorResponse} shape, with Turkish messages for the
+ * operator and English text in the application log.
+ */
+@Slf4j
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    static final String VALIDATION_CODE = "ALZ-VALIDATION";
+    static final String INTERNAL_CODE = "ALZ-INTERNAL";
+
+    @ExceptionHandler(SbmIntegrationException.class)
+    public ResponseEntity<ErrorResponse> handleSbmIntegration(SbmIntegrationException ex,
+                                                              HttpServletRequest request) {
+        log.error("SBM integration failure on {}: {} - {}",
+                request.getRequestURI(), ex.getErrorCode(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(ErrorResponse.of(request.getRequestURI(), ex.getErrorCode(), ex.getMessage(),
+                        List.of(SbmErrorCode.describe(ex.getErrorCode()))));
+    }
+
+    @ExceptionHandler(TokenException.class)
+    public ResponseEntity<ErrorResponse> handleToken(TokenException ex, HttpServletRequest request) {
+        log.error("Token acquisition failure on {}: {}", request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ErrorResponse.of(request.getRequestURI(), SbmErrorCode.SEC_00001.getCode(),
+                        "Token alınamadığı için işlem gerçekleştirilemedi.", List.of(ex.getMessage())));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex,
+                                                          HttpServletRequest request) {
+        List<String> details = ex.getBindingResult().getFieldErrors().stream()
+                .map(GlobalExceptionHandler::describeFieldError)
+                .toList();
+        log.warn("Invalid request on {}: {}", request.getRequestURI(), details);
+        return ResponseEntity.badRequest()
+                .body(ErrorResponse.of(request.getRequestURI(), VALIDATION_CODE,
+                        "İstek alanları geçersiz.", details));
+    }
+
+    @ExceptionHandler({MethodArgumentTypeMismatchException.class, IllegalArgumentException.class})
+    public ResponseEntity<ErrorResponse> handleBadRequest(Exception ex, HttpServletRequest request) {
+        log.warn("Bad request on {}: {}", request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.badRequest()
+                .body(ErrorResponse.of(request.getRequestURI(), VALIDATION_CODE,
+                        "İstek parametreleri geçersiz.", List.of(String.valueOf(ex.getMessage()))));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleUnexpected(Exception ex, HttpServletRequest request) {
+        log.error("Unexpected failure on {}", request.getRequestURI(), ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ErrorResponse.of(request.getRequestURI(), INTERNAL_CODE,
+                        "Beklenmeyen bir hata oluştu.", List.of(String.valueOf(ex.getMessage()))));
+    }
+
+    private static String describeFieldError(FieldError error) {
+        return error.getField() + ": " + error.getDefaultMessage();
+    }
+}

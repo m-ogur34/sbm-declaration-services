@@ -1,0 +1,393 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.14</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>tr.com.allianz</groupId>
+    <artifactId>sbm-declaration-services</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <name>sbm-declaration-services</name>
+    <description>SBM YSV declaration transfer services (Allianz Sigorta)</description>
+
+    <properties>
+        <java.version>21</java.version>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <maven.compiler.release>21</maven.compiler.release>
+
+        <!-- UTF-8 is mandatory: sources and resources contain Turkish characters and
+             the build also runs on Windows workstations with a non UTF-8 platform encoding. -->
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <maven.compiler.encoding>UTF-8</maven.compiler.encoding>
+
+        <spring-framework.version>6.2.19</spring-framework.version>
+        <spring-boot.version>3.5.14</spring-boot.version>
+        <spring-cloud.version>2025.0.0</spring-cloud.version>
+        <build-packaging-type>jar</build-packaging-type>
+        <ojdbc.version>19.3.0.0</ojdbc.version>
+        <tomcat.version>10.1.56</tomcat.version>
+        <logback.version>1.5.35</logback.version>
+        <micrometer.version>1.15.12</micrometer.version>
+        <!-- Jackson güvenlik zafiyetini kapatmak için sürümü eziyoruz -->
+        <jackson-bom.version>2.22.0</jackson-bom.version>
+
+        <mapstruct.version>1.6.3</mapstruct.version>
+        <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
+        <springdoc.version>2.6.0</springdoc.version>
+        <jacoco.version>0.8.12</jacoco.version>
+        <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.coverage.exclusions>
+            **/DeclarationServiceApplication.java,
+            **/dto/**,
+            **/entity/**,
+            **/config/*Properties.java,
+            **/exception/ErrorResponse.java
+        </sonar.coverage.exclusions>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Spring Framework güvenlik zafiyetini kapatmak için tüm modülleri eziyoruz -->
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-framework-bom</artifactId>
+                <version>${spring-framework.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Jackson güvenlik zafiyetini kapatmak için tüm Jackson modüllerini eziyoruz -->
+            <dependency>
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson-bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Force Spring Data JPA patch-level upgrade for security remediation -->
+            <dependency>
+                <groupId>org.springframework.data</groupId>
+                <artifactId>spring-data-jpa</artifactId>
+                <version>3.5.12</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.data</groupId>
+                <artifactId>spring-data-commons</artifactId>
+                <version>3.5.12</version>
+            </dependency>
+
+            <!-- Force Micrometer patch-level upgrade for security remediation -->
+            <dependency>
+                <groupId>io.micrometer</groupId>
+                <artifactId>micrometer-bom</artifactId>
+                <version>1.15.12</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-starter-parent</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- Apache HttpClient 5 backs RestClient: it supports request bodies on GET,
+             which the SBM "sorgu" endpoint requires. -->
+        <dependency>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.oracle.ojdbc</groupId>
+            <artifactId>ojdbc8</artifactId>
+            <version>${ojdbc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.oracle.ojdbc</groupId>
+            <artifactId>orai18n</artifactId>
+            <version>${ojdbc.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${springdoc.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+            <version>${mapstruct.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- EOL olan javax.annotation-api yerine geçerli ve aktif güncellenen Tomcat-Annotations API'si -->
+        <dependency>
+            <groupId>org.apache.tomcat</groupId>
+            <artifactId>tomcat-annotations-api</artifactId>
+            <version>9.0.86</version>
+        </dependency>
+
+        <!-- Bouncy Castle güvenlik zafiyetini kapatmak için sürümü eziyoruz -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+            <version>1.84</version>
+        </dependency>
+
+        <!-- No tr.com.allianz:ysv-services-rest-client dependency on purpose: the ESB is
+             called over plain HTTP with RestClient, nothing in this project imports that
+             SDK, and its presence on the internal Nexus has not been confirmed. Declaring
+             it would break the build before a single class is compiled. -->
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.junit.vintage</groupId>
+                    <artifactId>junit-vintage-engine</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+    </dependencies>
+
+    <profiles>
+        <profile>
+            <id>k8s-profile</id>
+            <properties>
+                <build-packaging-type>jar</build-packaging-type>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-maven-plugin</artifactId>
+                        <version>${spring-boot.version}</version>
+                        <configuration>
+                            <excludes>
+                                <exclude>
+                                    <groupId>org.projectlombok</groupId>
+                                    <artifactId>lombok</artifactId>
+                                </exclude>
+                            </excludes>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>repackage</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+            <distributionManagement>
+                <repository>
+                    <uniqueVersion>false</uniqueVersion>
+                    <id>kubernetes-snapshot</id>
+                    <url>https://sdlc.allianz.com.tr/nexus/content/repositories/kubernetes-snapshot/</url>
+                    <layout>default</layout>
+                </repository>
+            </distributionManagement>
+        </profile>
+
+        <profile>
+            <id>local-development</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>org.springframework.cloud</groupId>
+                    <artifactId>spring-cloud-starter-vault-config</artifactId>
+                    <version>4.3.0</version>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
+
+    <build>
+        <finalName>${project.artifactId}</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <release>${maven.compiler.release}</release>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                    <parameters>true</parameters>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok-mapstruct-binding</artifactId>
+                            <version>${lombok-mapstruct-binding.version}</version>
+                        </path>
+                        <path>
+                            <groupId>org.mapstruct</groupId>
+                            <artifactId>mapstruct-processor</artifactId>
+                            <version>${mapstruct.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                    <compilerArgs>
+                        <arg>-Amapstruct.defaultComponentModel=spring</arg>
+                        <arg>-Amapstruct.unmappedTargetPolicy=IGNORE</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <configuration>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                    <propertiesEncoding>${project.build.sourceEncoding}</propertiesEncoding>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- Keeps Turkish assertion messages readable in the Windows console; must be
+                         a JVM arg (-D), not a systemPropertyVariable, since file.encoding is read
+                         before the JVM starts and surefire cannot set it as a system property. -->
+                    <argLine>@{argLine} -Dfile.encoding=UTF-8</argLine>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <executions>
+                    <!-- Must be bound before the "test" phase so that surefire picks up the
+                         agent through the generated ${argLine} property. -->
+                    <execution>
+                        <id>jacoco-prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>jacoco-report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                        <configuration>
+                            <excludes>
+                                <exclude>tr/com/allianz/ysv/services/DeclarationServiceApplication.class</exclude>
+                                <exclude>tr/com/allianz/ysv/services/dto/**</exclude>
+                                <exclude>tr/com/allianz/ysv/services/entity/**</exclude>
+                                <exclude>tr/com/allianz/ysv/services/config/*Properties.class</exclude>
+                                <exclude>tr/com/allianz/ysv/services/config/*Properties$*.class</exclude>
+                                <exclude>tr/com/allianz/ysv/services/exception/ErrorResponse.class</exclude>
+                                <exclude>**/*MapperImpl.class</exclude>
+                            </excludes>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>jacoco-check</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <haltOnFailure>true</haltOnFailure>
+                            <excludes>
+                                <exclude>tr/com/allianz/ysv/services/DeclarationServiceApplication.class</exclude>
+                                <exclude>tr/com/allianz/ysv/services/dto/**</exclude>
+                                <exclude>tr/com/allianz/ysv/services/entity/**</exclude>
+                                <exclude>tr/com/allianz/ysv/services/config/*Properties.class</exclude>
+                                <exclude>tr/com/allianz/ysv/services/config/*Properties$*.class</exclude>
+                                <exclude>tr/com/allianz/ysv/services/exception/ErrorResponse.class</exclude>
+                                <exclude>**/*MapperImpl.class</exclude>
+                            </excludes>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.85</minimum>
+                                        </limit>
+                                        <limit>
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.80</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

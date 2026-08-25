@@ -1,0 +1,11 @@
+apiVersion: v2
+dependencies:
+  - condition: springboot-deployment.enabled
+    name: springboot-deployment
+    repository: oci://harbor.allianz-tr.local/middleware
+    version: 1.x.x
+description: Allianz springboot-deployment Helm chart for sbm-declaration-services
+name: sbm-declaration-services
+type: application
+version: 1.0.0
+appVersion: 1.0.0

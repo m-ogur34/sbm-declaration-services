@@ -1,0 +1,33 @@
+# Test defaults. Tests never touch a database and never open a socket: repositories are
+# mocked and the REST clients are bound to MockRestServiceServer. These values only satisfy
+# the @Validated @ConfigurationProperties beans in slice tests.
+spring:
+  main:
+    banner-mode: "off"
+
+esb:
+  base-url: http://esb.test.local:12000
+  ysv:
+    beyanname-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname
+    sorgu-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname/sorgu
+    sorgu-method: GET
+  connect-timeout: 1s
+  read-timeout: 2s
+
+token-management:
+  base-url: http://token.test.local
+  path: /alz-token-management/api/v1/tokens/sbm-token-generate
+  client-name: ysv
+  user-name: TEST_USER
+  company-code: "045"
+  connect-timeout: 1s
+  read-timeout: 2s
+
+sbm:
+  company-code: "045"
+  retry:
+    max-attempts: 2
+
+logging:
+  level:
+    tr.com.allianz.ysv.services: WARN
