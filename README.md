@@ -1,3 +1,5 @@
+Proje
+
 # sbm-declaration-services
 
 Yangın Sigorta Vergisi (YSV) beyanname verilerini Allianz Oracle veritabanından okuyup
