@@ -1,6 +1,5 @@
-Proje
-
-# sbm-declaration-servicesssssss
+Muhammed
+# sbm-declaration-service
 
 Yangın Sigorta Vergisi (YSV) beyanname verilerini Allianz Oracle veritabanından okuyup
 **ESB üzerinden SBM'ye (Sigorta Bilgi ve Gözetim Merkezi)** ileten Spring Boot 3.3 / Java 21
