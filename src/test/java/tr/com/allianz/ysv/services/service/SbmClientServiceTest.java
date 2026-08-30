@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.headerDoesNotExist;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -49,12 +50,23 @@ class SbmClientServiceTest {
 
     private static final String BASE_URL = "http://esb.test.local:12000";
     private static final String BEYANNAME_URL = BASE_URL + "/api/rest/vergi-beyan-rs/v10/ysv-beyanname";
-    private static final String SORGU_URL = BEYANNAME_URL + "/sorgu";
+    private static final String SORGU_URL =
+            BEYANNAME_URL + "?ysvDosyaNo=YSV202513491&sigortaSirketKodu=045";
     private static final String TRANSACTION_ID = "9d0e6c2e-6f2b-4c2a-9d3e-a1b2c3d4e5f6";
     private static final String ACCESS_TOKEN = "MOCK-TEST-ACCESS-TOKEN-VALUE";
 
+    /** SBM zarfı: POST -> data.ysvDosyaNo. */
     private static final String SUCCESS_BODY =
-            "{\"result\":true,\"status\":200,\"ysvDosyaNo\":\"YSV202513491\"}";
+            "{\"result\":true,\"status\":201,\"data\":{\"ysvDosyaNo\":\"YSV202513491\"}}";
+
+    /** SBM sorgu zarfı: GET -> data = beyannamenin kendisi. */
+    private static final String QUERY_SUCCESS_BODY = """
+            {"result":true,"status":200,"data":{
+              "sigortaSirketKodu":"045","ysvDosyaNo":"YSV202513491","ilceKodu":null,
+              "ay":1,"yil":2026,"ilKodu":1,"sonOdemeTarihi":"2026-01-20",
+              "ysvTutarList":[{"menkulTipi":"MENKUL","alinanPrimTutari":1,"vergiOrani":10}]
+            }}
+            """;
 
     private static final String VALIDATION_ERROR_BODY = """
             {
@@ -143,6 +155,22 @@ class SbmClientServiceTest {
     }
 
     @Test
+    @DisplayName("token identityType null ise Requester-ID-Type header'ı hiç yazılmaz")
+    void call_withoutIdentityType_skipsTheTypeHeader() {
+        when(tokenManagementService.generateToken(any())).thenReturn(TokenResponse.builder()
+                .accessToken(ACCESS_TOKEN)
+                .clientCredentials(ClientCredentials.builder().clientIdNumber("86773997310").build())
+                .build());
+        server.expect(requestTo(BEYANNAME_URL))
+                .andExpect(header("Requester-ID-No", "86773997310"))
+                .andExpect(headerDoesNotExist("Requester-ID-Type"))
+                .andRespond(withSuccess(SUCCESS_BODY, MediaType.APPLICATION_JSON));
+
+        assertThat(service.send(declarationRequest()).isSuccess()).isTrue();
+        server.verify();
+    }
+
+    @Test
     void update_usesPut() {
         server.expect(requestTo(BEYANNAME_URL))
                 .andExpect(method(HttpMethod.PUT))
@@ -155,29 +183,21 @@ class SbmClientServiceTest {
     }
 
     @Test
-    @DisplayName("the query verb follows esb.ysv.sorgu-method")
-    void query_usesConfiguredMethod() {
+    @DisplayName("query is a GET with the parameters in the query string and no body")
+    void query_isGetWithQueryString() {
         server.expect(requestTo(SORGU_URL))
                 .andExpect(method(HttpMethod.GET))
-                .andExpect(jsonPath("$.ysvDosyaNo").value("YSV202513491"))
-                .andRespond(withSuccess(SUCCESS_BODY, MediaType.APPLICATION_JSON));
+                .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + ACCESS_TOKEN))
+                .andExpect(header("Requester-ID-No", "86773997310"))
+                .andRespond(withSuccess(QUERY_SUCCESS_BODY, MediaType.APPLICATION_JSON)
+                        .headers(transactionIdHeader()));
 
-        assertThat(service.query(queryRequest()).isSuccess()).isTrue();
+        SbmCallResult result = service.query(queryRequest());
 
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.getTransactionId()).isEqualTo(TRANSACTION_ID);
         server.verify();
         verify(tokenManagementService).generateToken(OperationType.GET);
-    }
-
-    @Test
-    void query_canBeSwitchedToPost() {
-        esbProperties.getYsv().setSorguMethod("POST");
-        server.expect(requestTo(SORGU_URL))
-                .andExpect(method(HttpMethod.POST))
-                .andRespond(withSuccess(SUCCESS_BODY, MediaType.APPLICATION_JSON));
-
-        assertThat(service.query(queryRequest()).isSuccess()).isTrue();
-
-        server.verify();
     }
 
     // --- failures ----------------------------------------------------------------------

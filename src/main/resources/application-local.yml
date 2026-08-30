@@ -1,0 +1,22 @@
+# Saf lokal geliştirme profili — kendi makinendeki Oracle'a doğrudan bağlanır.
+# Vault YOK, ESB/token servisi çağrıları VDI/VPN dışında erişilemez.
+# Şema: db/local/local_setup.sql  |  Test verisi: db/sample_data_scenarios.sql
+# Çalıştırma: mvn spring-boot:run -Dspring-boot.run.profiles=local
+spring:
+  cloud:
+    vault:
+      enabled: false
+  datasource:
+    url: ${LOCAL_DB_URL:jdbc:oracle:thin:@//localhost:1521/XEPDB1}
+    username: ${LOCAL_DB_USER:ysv}
+    password: ${LOCAL_DB_PASSWORD:ysv}
+  jpa:
+    show-sql: true
+
+# Lokalde API anahtarı / rate limit kapalı (Swagger'dan rahat deneme için).
+api-guard:
+  enabled: false
+
+logging:
+  level:
+    tr.com.allianz.ysv.services: DEBUG

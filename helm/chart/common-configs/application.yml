@@ -1,5 +1,9 @@
+# Settings shared by every environment. Anything that differs per environment lives in
+# configs/application-<profile>.yml instead.
 spring:
   datasource:
+    # URL, username and password come from the Vault template as
+    # SPRING_DATASOURCE_URL / _USERNAME / _PASSWORD environment variables.
     driver-class-name: oracle.jdbc.OracleDriver
     hikari:
       pool-name: sbm-declaration-pool
@@ -45,15 +49,31 @@ springdoc:
 esb:
   ysv:
     beyanname-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname
-    sorgu-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname/sorgu
-    sorgu-method: GET
+    # Sorgu gönderle aynı path (GET); ESB proxy path'i farklıysa burada ezilir.
+    sorgu-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname
   connect-timeout: 10s
   read-timeout: 60s
+
+# token-management is deliberately absent here: every one of its settings - base-url, path,
+# client-name, user-name, company-code - is environment specific and lives in
+# configs/application-<profile>.yml. TokenManagementProperties is @Validated with @NotBlank,
+# so a missing setting fails the application at startup instead of at the first SBM call.
 
 sbm:
   company-code: "045"
   retry:
     max-attempts: 2          # only for SEC-00002 and 5xx
+
+# PEN test savunma katmanı. api-key koda/git'e yazılmaz; ortam secret'ından
+# API_GUARD_API_KEY olarak enjekte edilir. Boşsa anahtar kontrolü kapalı, rate limit açık.
+api-guard:
+  enabled: true
+  api-key: ${API_GUARD_API_KEY:}
+  rate-limit:
+    enabled: true
+    capacity: 120
+    refill-tokens: 120
+    refill-period: 1m
 
 logging:
   level:

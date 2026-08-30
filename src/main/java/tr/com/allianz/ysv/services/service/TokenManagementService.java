@@ -16,10 +16,14 @@ import tr.com.allianz.ysv.services.exception.TokenException;
 import tr.com.allianz.ysv.services.util.MaskUtil;
 
 /**
- * Obtains a brand new SBM token from alz-token-management before every single call.
+ * 2. AŞAMA — Her SBM çağrısından önce {@code alz-token-management}'ten <b>yeni</b> token alır.
  *
- * <p>There is no token cache in this application on purpose: caching is owned by
- * alz-token-management, and SBM answers SEC-00002 for anything stale.</p>
+ * <p>Bu uygulamada token cache'i bilerek yoktur: cache {@code alz-token-management}
+ * tarafındadır ve SBM eski token'a {@code SEC-00002} döner. İstek parametreleri
+ * ({@code base-url}, {@code path}, {@code client-name}, {@code function-name},
+ * {@code user-name}, {@code company-code}) tamamen ortam bazlıdır. Cevaptan gelen
+ * {@code accessToken} ve {@code clientCredentials} ({@code Requester-ID-Type} /
+ * {@code Requester-ID-No}) {@link SbmClientService} tarafından SBM header'larına yazılır.</p>
  */
 @Slf4j
 @Service
@@ -44,13 +48,13 @@ public class TokenManagementService {
         TokenRequest request = TokenRequest.builder()
                 .clientName(properties.getClientName())
                 .transactionId(transactionId)
-                .functionName(operationType.getTokenFunctionName())
+                .functionName(properties.getFunctionName())
                 .userName(properties.getUserName())
                 .companyCode(properties.getCompanyCode())
                 .build();
 
-        log.debug("Requesting SBM token: transactionId={}, functionName={}",
-                transactionId, request.getFunctionName());
+        log.debug("Requesting SBM token: transactionId={}, functionName={}, operation={}",
+                transactionId, request.getFunctionName(), operationType);
 
         TokenResponse response;
         try {

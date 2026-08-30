@@ -34,8 +34,7 @@ esb:
   base-url: ${ESB_SERVER:http://esb.allianz.com.tr:12000}
   ysv:
     beyanname-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname
-    sorgu-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname/sorgu
-    sorgu-method: GET
+    sorgu-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname
   connect-timeout: 10s
   read-timeout: 60s
 
@@ -45,6 +44,7 @@ token-management:
   base-url: https://int-sc-test-auth.allianz.com.tr
   path: /alz-token-management/api/v1/tokens/sbm-token-generate
   client-name: ysv
+  function-name: test
   user-name: WDA2422_16178
   company-code: "045"
   connect-timeout: 5s

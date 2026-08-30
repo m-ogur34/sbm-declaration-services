@@ -12,6 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.util.UriComponentsBuilder;
 import tr.com.allianz.ysv.services.config.EsbProperties;
 import tr.com.allianz.ysv.services.config.RestClientConfig;
 import tr.com.allianz.ysv.services.config.SbmProperties;
@@ -28,12 +29,25 @@ import tr.com.allianz.ysv.services.exception.TokenException;
 import tr.com.allianz.ysv.services.util.JsonUtil;
 
 /**
- * Talks to SBM through the Allianz ESB. The SBM addresses themselves are never called
- * directly; the ESB owns the environment routing behind a single base URL.
+ * 3. ve 4. AŞAMA — SBM ile ESB üzerinden haberleşen tek sınıf.
  *
- * <p>Failures are returned as {@link SbmCallResult} rather than thrown, so that the caller
- * can always persist the audit log row before deciding what to do with the process status.
- * The only exception is {@link TokenException}: without a token nothing was ever sent.</p>
+ * <p>Akış: her çağrıda önce {@link TokenManagementService}'ten <b>taze</b> token alınır
+ * (cache yok), sonra istek {@code esb.allianz.com.tr:12000} adresine atılır; ESB ortam
+ * bazlı olarak ilgili SBM ortamına yönlendirir. SBM adresleri hiçbir zaman doğrudan
+ * çağrılmaz.</p>
+ *
+ * <ul>
+ *   <li>{@link #send} — yeni beyanname, HTTP POST</li>
+ *   <li>{@link #update} — güncelleme / iptal (tutar sıfırlama), HTTP PUT</li>
+ *   <li>{@link #query} — sorgu, HTTP GET + query string (gövde yok)</li>
+ * </ul>
+ *
+ * <p>Hatalar {@link SbmCallResult} olarak <b>döndürülür</b>, fırlatılmaz: çağıran her
+ * durumda audit log satırını yazabilsin diye. Tek istisna {@link TokenException} —
+ * token yoksa SBM'ye hiçbir şey gitmemiştir.</p>
+ *
+ * <p>SBM cevap zarfı her işlemde aynıdır: {@code { "result": bool, "data": <...>,
+ * "status": int } }. Başarı ölçütü: HTTP 2xx <b>ve</b> {@code result == true}.</p>
  */
 @Slf4j
 @Service
@@ -61,25 +75,30 @@ public class SbmClientService {
         this.jsonUtil = jsonUtil;
     }
 
-    /** New declaration: HTTP POST on {@code ysv-beyanname}. */
+    /** Yeni beyanname: {@code ysv-beyanname} üzerinde HTTP POST. */
     public SbmCallResult send(SbmDeclarationRequest request) {
         return callWithRetry(HttpMethod.POST, esbProperties.beyannameUrl(), request, OperationType.POST);
     }
 
-    /** Declaration update (also used by the cancel flow): HTTP PUT on {@code ysv-beyanname}. */
+    /** Beyanname güncelleme (iptal akışı da bunu kullanır): {@code ysv-beyanname} üzerinde HTTP PUT. */
     public SbmCallResult update(SbmDeclarationRequest request) {
         return callWithRetry(HttpMethod.PUT, esbProperties.beyannameUrl(), request, OperationType.PUT);
     }
 
     /**
-     * Declaration lookup on {@code ysv-beyanname/sorgu}.
+     * Beyanname sorgusu: {@code ysv-beyanname} üzerinde HTTP GET.
      *
-     * <p>TODO(confirm): SBM documents this as a GET but shows a request body, so the verb is
-     * driven by {@code esb.ysv.sorgu-method}.</p>
+     * <p>SBM dökümanı ve ESB'den alınan başarılı capture, parametrelerin <b>query string</b>
+     * ile gittiğini gösteriyor ({@code ?ysvDosyaNo=...&sigortaSirketKodu=...}); GET gövdesi
+     * yoktur.</p>
      */
     public SbmCallResult query(SbmQueryRequest request) {
-        HttpMethod method = HttpMethod.valueOf(esbProperties.getYsv().getSorguMethod());
-        return callWithRetry(method, esbProperties.sorguUrl(), request, OperationType.GET);
+        String url = UriComponentsBuilder.fromUriString(esbProperties.sorguUrl())
+                .queryParam("ysvDosyaNo", request.getYsvDosyaNo())
+                .queryParam("sigortaSirketKodu", request.getSigortaSirketKodu())
+                .build()
+                .toUriString();
+        return callWithRetry(HttpMethod.GET, url, null, OperationType.GET);
     }
 
     private SbmCallResult callWithRetry(HttpMethod method, String url, Object body, OperationType operationType) {
@@ -96,8 +115,8 @@ public class SbmClientService {
     }
 
     /**
-     * Only an expired token and a server side failure may be retried. Everything else is a
-     * data or authorisation problem, and re-sending it would risk a duplicate declaration
+     * Sadece süresi dolmuş token ve sunucu tarafı hatası tekrar denenebilir. Diğer her şey
+     * veri/yetki sorunudur; yeniden göndermek mükerrer beyanname riski taşır
      * (RISK-HAVUZU-00004).
      */
     static boolean isRetryable(SbmCallResult result) {
@@ -108,15 +127,16 @@ public class SbmClientService {
     }
 
     private SbmCallResult call(HttpMethod method, String url, Object body, OperationType operationType) {
-        String requestPayload = jsonUtil.toJson(body);
+        String requestPayload = body == null ? null : jsonUtil.toJson(body);
         TokenResponse token = tokenManagementService.generateToken(operationType);
         try {
-            return esbRestClient.method(method)
+            RestClient.RequestBodySpec spec = esbRestClient.method(method)
                     .uri(url)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .headers(headers -> applyAuthHeaders(headers, token))
-                    .body(body)
-                    .exchange((request, response) -> toResult(response, requestPayload, operationType));
+                    .headers(headers -> applyAuthHeaders(headers, token));
+            if (body != null) {
+                spec.contentType(MediaType.APPLICATION_JSON).body(body);
+            }
+            return spec.exchange((request, response) -> toResult(response, requestPayload, operationType));
         } catch (Exception ex) {
             log.error("SBM {} call could not be completed: {}", operationType, ex.getMessage(), ex);
             return SbmCallResult.builder()
@@ -130,8 +150,9 @@ public class SbmClientService {
     }
 
     /**
-     * Values come from the token response; nothing here is hard coded and the Authorization
-     * header is never written to the audit payload.
+     * Değerler token cevabından gelir; hiçbiri hardcode değildir ve {@code Authorization}
+     * başlığı audit payload'una yazılmaz. Her iki başlık da SBM'nin tüm servislerinde
+     * zorunludur (POST/PUT/GET).
      */
     private void applyAuthHeaders(HttpHeaders headers, TokenResponse token) {
         headers.setBearerAuth(token.getAccessToken());
@@ -153,7 +174,7 @@ public class SbmClientService {
         boolean success = httpStatus >= 200 && httpStatus < 300
                 && parsed != null && Boolean.TRUE.equals(parsed.getResult());
 
-        // SBM asks for the Transaction-Id on every support request, so it is always logged.
+        // SBM her destek talebinde Transaction-Id istiyor; bu yüzden her zaman loglanır.
         if (success) {
             log.info("SBM {} call succeeded: httpStatus={}, transactionId={}",
                     operationType, httpStatus, transactionId);
@@ -168,7 +189,7 @@ public class SbmClientService {
                 .transactionId(transactionId)
                 .requestPayload(requestPayload)
                 .responsePayload(responsePayload)
-                .ysvDosyaNo(parsed == null ? null : parsed.getYsvDosyaNo())
+                .ysvDosyaNo(success && parsed != null ? parsed.extractYsvDosyaNo() : null)
                 .errorCode(success ? null : firstErrorCode(parsed))
                 .errorMessage(success ? null : buildErrorMessage(parsed, httpStatus))
                 .build();
@@ -185,8 +206,8 @@ public class SbmClientService {
     }
 
     /**
-     * Joins every reason SBM returned; the caller truncates it to the 2000 characters
-     * {@code ERROR_DETAILS} can hold.
+     * SBM'nin döndürdüğü tüm sebepleri birleştirir; çağıran bunu {@code ERROR_DETAILS}'in
+     * tuttuğu 2000 karaktere kısaltır.
      */
     private static String buildErrorMessage(SbmDeclarationResponse parsed, int httpStatus) {
         List<SbmErrorReason> reasons = reasons(parsed);

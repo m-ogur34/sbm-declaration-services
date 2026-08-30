@@ -13,7 +13,7 @@ class RestClientConfigTest {
     private final RestClientConfig config = new RestClientConfig();
 
     @Test
-    @DisplayName("Apache HttpClient 5 backs the clients so that a GET can carry a body")
+    @DisplayName("client'lar Apache HttpClient 5 tabanlıdır (havuz + ayrı timeout kontrolü)")
     void requestFactory_isBackedByApacheHttpClient() {
         ClientHttpRequestFactory factory =
                 RestClientConfig.requestFactory(Duration.ofSeconds(1), Duration.ofSeconds(2));
@@ -32,7 +32,7 @@ class RestClientConfigTest {
         assertThat(properties.beyannameUrl())
                 .isEqualTo("http://esb.test.local:12000/api/rest/vergi-beyan-rs/v10/ysv-beyanname");
         assertThat(properties.sorguUrl())
-                .isEqualTo("http://esb.test.local:12000/api/rest/vergi-beyan-rs/v10/ysv-beyanname/sorgu");
+                .isEqualTo("http://esb.test.local:12000/api/rest/vergi-beyan-rs/v10/ysv-beyanname");
     }
 
     @Test

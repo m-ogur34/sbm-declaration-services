@@ -1,8 +1,14 @@
 # CLAUDE.md — sbm-declaration-services
 
 Bu dosya, projede çalışacak agent için bağlam ve kesinleşmiş kararları içerir.
-Kod yazmadan önce bu dosyanın tamamını oku. Buradaki kararlar tartışmaya açık
-değildir; bir çelişki görürsen kod değiştirmeden önce sor.
+Kod yazmadan önce bu dosyanın tamamını oku. Bir çelişki görürsen kod değiştirmeden
+önce sor.
+
+> **ÖNCELİK:** Uçtan uca çalışma prensibinin güncel ve ayrıntılı hâli
+> **`CALISMA-PRENSIBI.md`**'dedir (gerçek SBM/ESB dökümanlarına göre yazıldı).
+> Ortam/profil/Vault/DB bağlantısı için **`HELM-VE-KONFIG.md`**. Bu dosya (`CLAUDE.md`)
+> ile onlar çelişirse **`CALISMA-PRENSIBI.md` geçerlidir**. 2026-08-30'da güncellenen
+> kararlar aşağıda işaretlendi (⟳).
 
 ---
 
@@ -22,8 +28,10 @@ Allianz Sigorta içi proje. Şirket kodu: **045**.
 
 ### Uçtan uca akış
 
-1. OPUS sisteminden alınan YSV verileri, **manuel script** ile
-   `CUSTOMER.ALZ_SBM_DECL_PROCESS` tablosuna basılır. (Uygulama bu insert'i yapmaz.)
+1. ⟳ OPUS'tan türetilen YSV verisi Excel olarak **`POST /api/v1/declarations/upload`**
+   ucundan yüklenir; servis doğrulayıp `CUSTOMER.ALZ_SBM_DECL_PROCESS`'e `STATUS=NEW`
+   ile insert eder. (Prod DB'de manuel script firma politikası gereği yasak — eski
+   "uygulama insert yapmaz" kararı geçersiz. Bkz. `CALISMA-PRENSIBI.md` §3.)
 2. Bu repodaki **gönder / güncelle / sorgu** API'leri tetiklenir.
 3. Her çağrıda `alz-token-management` servisinden **taze token** alınır.
 4. İstek **ESB (OSB 12c)** üzerinden SBM'ye çıkar.
@@ -133,8 +141,8 @@ Gerekli olanlar:
 `bcprov-jdk18on` 1.84, `spring-boot-starter-test` (test scope,
 `junit-vintage-engine` exclusion'ı ile).
 
-`poi-ooxml` accounting'de Excel okuduğu için var. **Bu projede Excel okuma yok**
-(veri DB'ye manuel script ile giriyor) → **ekleme**.
+⟳ `poi-ooxml` **eklendi** (`${poi.version}` = 5.3.0). 1. aşama Excel yükleme servisi
+bunu kullanır. Sadece okuma; yazma yok.
 
 ### profiles
 
@@ -151,13 +159,13 @@ Gerekli olanlar:
 
 ### JaCoCo eşiği
 
-Accounting ile hizalı:
+⟳ Firma politikası: birim test kapsamı **≥ %90**.
 
 ```
 element: BUNDLE
-excludes: *Test, *Application
-INSTRUCTION COVEREDRATIO >= 0.85
-BRANCH      COVEREDRATIO >= 0.80
+excludes: *Test, *Application, dto/**, entity/**, *Properties, ErrorResponse, *MapperImpl
+INSTRUCTION COVEREDRATIO >= 0.90
+BRANCH      COVEREDRATIO >= 0.90
 ```
 
 ---
@@ -171,6 +179,8 @@ YSV'nin kendi token servisi **yoktur ve olmayacaktır**. Merkezi servis kullanı
   (path `sbm-token-generate`, `sbm-generate-token` **değil**)
 - Request alanları: `clientName` (= `ysv`), `transactionId` (her istekte yeni UUID),
   `functionName`, `userName`, `companyCode` (= `045`)
+- ⟳ `functionName` **ortam bazlı config**: `token-management.function-name` (default
+  `test`). Operasyona göre değişmez; kod bunu `OperationType`'tan türetmez.
 - Response: `accessToken` + `clientCredentials`
   - `clientIdentityType` → SBM header `Requester-ID-Type`
   - `clientIdNumber` → SBM header `Requester-ID-No`
@@ -182,7 +192,7 @@ YSV'nin kendi token servisi **yoktur ve olmayacaktır**. Merkezi servis kullanı
 ### Kritik konfigürasyon kuralı
 
 `alz-token-management` request parametrelerinin **tamamı ortam bazlıdır**:
-`base-url`, `path`, `clientName`, `userName`, `companyCode`.
+`base-url`, `path`, `clientName`, `functionName`, `userName`, `companyCode`.
 Hiçbiri ortak/paylaşılan default olarak yazılmaz — hepsi
 `helm/chart/configs/application-<ortam>.yml` içinde ayrı ayrı tanımlanır.
 
@@ -202,8 +212,12 @@ varsa temizle.
 - **pom.xml'e ESB için hiçbir dependency eklenmez.** Uygulama ESB URL'ine
   doğrudan HTTP isteği atar. (`tr.com.allianz:ysv-services-rest-client` diye bir
   bağımlılık **yok**; eski notlarda geçtiyse yanlıştır.)
-- ESB proxy path deseni (SOAP projesinden referans):
-  `YsvServices/ProxyService/...`
+- ⟳ SBM path'i (ESB'nin arkası): gönder/güncelle/sorgu **aynı** path
+  `/api/rest/vergi-beyan-rs/v10/ysv-beyanname`. Sorgu ayrı bir `/sorgu` eki
+  **değildir**; sadece HTTP GET + query string (`?ysvDosyaNo=..&sigortaSirketKodu=..`),
+  gövde yok. ESB proxy path'i farklıysa `esb.ysv.*-path` ile ezilir (VDI'da teyit).
+- ⟳ `tr.com.allianz:ysv-services-rest-client` **eklenmez** (karar sabit); ESB düz HTTP
+  `RestClient` ile çağrılır.
 
 ---
 
@@ -231,6 +245,10 @@ Diğer kurallar:
 - POST (gönder) ile PUT (güncelle) ayrımı `@JsonInclude(NON_NULL)` ile yapılır.
 - Silme işlemi yoktur; silme gerekirse tutarlar **0** olarak güncellenir.
 - Hata cevapları: **HTTP 422**, gövdede `error.reasons[]`.
+- ⟳ **Response zarfı her işlemde**: `{ "result": bool, "data": <...>, "status": int }`.
+  POST → `data.ysvDosyaNo`; PUT → `data: true`; GET → `data: { beyanname +
+  telefon/vkn/adres/unvan }`. Başarı = HTTP 2xx **ve** `result == true`. (Alanlar kök
+  seviyede DEĞİL, `data` içinde.)
 
 ### Büyükşehir mantığı
 
@@ -372,7 +390,14 @@ loglanmalı (SBM destek talebi için gerekiyor).
 
 ## 12. Bilinen açık konular
 
-- Retry-token URL path'i ve `userName` değeri token ekibiyle (Hüseyin Dağ /
+Tam liste `CALISMA-PRENSIBI.md` §11'de. Öne çıkanlar:
+
+- ⟳ Firma politikası: birim test kapsamı **≥ %90**; proje **PEN testine** girecek
+  (rate limit + broken access control) — `ApiGuardFilter` + `api-guard.*` config eklendi
+  (`CALISMA-PRENSIBI.md` §14).
+- ⟳ DB scriptleri tüm ortamlara deploy edilecek → `db/rollback_db.sql` eklendi.
+  Lokal test için `db/local/*` + `db/sample_data_scenarios.sql` + `application-local.yml`.
+- `functionName` (default `test`) ve `userName` token ekibiyle (Hüseyin Dağ /
   Ömer Faruk Ceylan) teyit edilecek.
 - SBM REST şifresi (`koc` kullanıcısı) ve TEST/PRE/PROD için IP whitelist talebi beklemede.
 - Teknik tasarım dökümanı yeni token mimarisine göre güncellenecek.
@@ -387,10 +412,13 @@ loglanmalı (SBM destek talebi için gerekiyor).
 - ❌ `.editorconfig`, `Jenkinsfile`, `lombok.config` gibi ek dosyalar bırakma.
 - ❌ Token cache'i ekleme.
 - ❌ `Requester-ID-Type` / `Requester-ID-No` header'larını hardcode etme.
-- ❌ SBM dökümanındaki tırnaklı örnek JSON'a göre tüm alanları string yapma.
 - ❌ `ilceKodu`'yu büyükşehir için `0` gönderme — alanı tamamen çıkar.
-- ❌ ESB için pom'a dependency ekleme.
+- ❌ ESB için pom'a dependency ekleme (`ysv-services-rest-client` dâhil).
 - ❌ Ortama göre farklı SBM URL'i seçme — ESB tek URL, yönlendirmeyi kendi yapar.
-- ❌ `menkulTipi`'ni sayısal gönderme.
+- ❌ `menkulTipi`'ni SBM'ye sayısal gönderme (`MENKUL`/`GAYRIMENKUL` string). Not:
+  Excel'den `1`/`2` gelirse `MovableType.fromExcel` ile dönüştürülür.
 - ❌ RestTemplate / WebClient kullanma.
-- ❌ `poi-ooxml` ekleme — bu projede Excel okunmuyor.
+- ❌ SBM cevabındaki `ysvDosyaNo`/beyanname alanlarını kök seviyede okuma — `data` içinde.
+- ⚠️ Alan tipleri: kod tipli JSON gönderir (sayısal alanlar tırnaksız); tırnaklı örnek
+  JSON'a göre hepsini string yapma. VDI'da 422 gelirse ilgili alan tekil olarak string'e
+  çevrilir (bkz. `CALISMA-PRENSIBI.md` §5.2, §11/1).

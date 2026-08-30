@@ -9,8 +9,7 @@ esb:
   base-url: http://esb.test.local:12000
   ysv:
     beyanname-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname
-    sorgu-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname/sorgu
-    sorgu-method: GET
+    sorgu-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname
   connect-timeout: 1s
   read-timeout: 2s
 
@@ -18,10 +17,14 @@ token-management:
   base-url: http://token.test.local
   path: /alz-token-management/api/v1/tokens/sbm-token-generate
   client-name: ysv
+  function-name: test
   user-name: TEST_USER
   company-code: "045"
   connect-timeout: 1s
   read-timeout: 2s
+
+api-guard:
+  enabled: false
 
 sbm:
   company-code: "045"

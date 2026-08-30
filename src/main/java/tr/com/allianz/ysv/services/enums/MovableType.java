@@ -40,4 +40,36 @@ public enum MovableType {
         }
         throw new IllegalArgumentException("Gecersiz menkul tipi degeri: " + sbmValue);
     }
+
+    /**
+     * Excel'den gelen menkul tipini çözer. İş biriminden metin ({@code MENKUL} /
+     * {@code GAYRIMENKUL}) istenmekle birlikte, kaynak OPUS ekstresi hâlâ sayısal
+     * ({@code 1} / {@code 2}) verebildiği için ikisi de kabul edilir. POI sayısal
+     * hücreyi {@code "1.0"} gibi de verebilir; o da tolere edilir.
+     *
+     * @param raw Excel hücresinin metin hâli, {@code null}/boş olabilir
+     * @return eşleşen tip
+     * @throws IllegalArgumentException değer tanınamazsa
+     */
+    public static MovableType fromExcel(String raw) {
+        if (raw != null) {
+            String value = raw.trim();
+            if (value.endsWith(".0")) {
+                value = value.substring(0, value.length() - 2);
+            }
+            if ("1".equals(value)) {
+                return MENKUL;
+            }
+            if ("2".equals(value)) {
+                return GAYRIMENKUL;
+            }
+            for (MovableType type : values()) {
+                if (type.sbmValue.equalsIgnoreCase(value)) {
+                    return type;
+                }
+            }
+        }
+        throw new IllegalArgumentException("Geçersiz menkulTipi değeri: " + raw
+                + " (beklenen: 1/2 veya MENKUL/GAYRIMENKUL)");
+    }
 }

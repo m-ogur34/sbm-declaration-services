@@ -32,11 +32,32 @@ class MovableTypeTest {
     }
 
     @Test
-    @DisplayName("the OPUS numeric codes are not part of the enum any more")
-    void numericCodesAreNotExposed() {
+    @DisplayName("fromSbmValue rejects the OPUS numeric codes (SBM contract is string only)")
+    void numericCodesAreNotAcceptedBySbmValue() {
         assertThatThrownBy(() -> MovableType.fromSbmValue("1"))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> MovableType.fromSbmValue("2"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("fromExcel accepts both the numeric OPUS codes and the text form")
+    void fromExcel_acceptsNumericAndText() {
+        assertThat(MovableType.fromExcel("1")).isSameAs(MovableType.MENKUL);
+        assertThat(MovableType.fromExcel("2")).isSameAs(MovableType.GAYRIMENKUL);
+        assertThat(MovableType.fromExcel("1.0")).isSameAs(MovableType.MENKUL);
+        assertThat(MovableType.fromExcel("2.0")).isSameAs(MovableType.GAYRIMENKUL);
+        assertThat(MovableType.fromExcel(" menkul ")).isSameAs(MovableType.MENKUL);
+        assertThat(MovableType.fromExcel("GAYRIMENKUL")).isSameAs(MovableType.GAYRIMENKUL);
+    }
+
+    @Test
+    void fromExcel_rejectsUnknownAndNull() {
+        assertThatThrownBy(() -> MovableType.fromExcel("3"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> MovableType.fromExcel("TASIT"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> MovableType.fromExcel(null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }
