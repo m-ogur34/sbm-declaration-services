@@ -1,7 +1,14 @@
-# Saf lokal geliştirme profili — kendi makinendeki Oracle'a doğrudan bağlanır.
-# Vault YOK, ESB/token servisi çağrıları VDI/VPN dışında erişilemez.
-# Şema: db/local/local_setup.sql  |  Test verisi: db/sample_data_scenarios.sql
-# Çalıştırma: mvn spring-boot:run -Dspring-boot.run.profiles=local
+# Saf lokal / VDI geliştirme profili — Vault YOK, ayarlar doğrudan burada.
+# DB'yi kendi lokal Oracle'ına VEYA SC-UAT'a yönlendirebilirsin (env / -D ile).
+#   Şema (lokal):     db/local/local_setup.sql
+#   Test verisi:      db/sample_data_scenarios.sql
+#   Çalıştırma:       mvn spring-boot:run -Dspring-boot.run.profiles=local
+#
+# SC-UAT'a yönlendirmek için (IntelliJ Run Config > Environment variables ya da -D):
+#   LOCAL_DB_URL=jdbc:oracle:thin:@//opusuat-scan.allianz-tr.local:1521/OPSSCUAT
+#   LOCAL_DB_USER=<SC-UAT kullanıcı>
+#   LOCAL_DB_PASSWORD=<SC-UAT şifre>
+# ESB ve token servisi VDI/VPN ağı gerektirir.
 spring:
   cloud:
     vault:
@@ -12,6 +19,30 @@ spring:
     password: ${LOCAL_DB_PASSWORD:ysv}
   jpa:
     show-sql: true
+
+esb:
+  base-url: ${ESB_SERVER:http://esb.allianz.com.tr:12000}
+  ysv:
+    beyanname-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname
+    sorgu-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname
+  connect-timeout: 10s
+  read-timeout: 60s
+
+# SC-TEST token servisi (tüm ortamlardan token alınabiliyor).
+token-management:
+  base-url: https://int-sc-test-auth.allianz.com.tr
+  path: /alz-token-management/api/v1/tokens/sbm-token-generate
+  client-name: ysv
+  function-name: test
+  user-name: WDA2422_16178
+  company-code: "045"
+  connect-timeout: 5s
+  read-timeout: 30s
+
+sbm:
+  company-code: "045"
+  retry:
+    max-attempts: 2
 
 # Lokalde API anahtarı / rate limit kapalı (Swagger'dan rahat deneme için).
 api-guard:
