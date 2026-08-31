@@ -90,6 +90,19 @@
                 <scope>import</scope>
             </dependency>
 
+            <!-- Prometheus istemci artefaktlarını tek sürüme sabitle. Aksi halde
+                 micrometer-registry-prometheus çekirdeği 1.3.6'da bırakırken
+                 spring-boot-dependencies exposition-textformats'ı 1.3.10'a çekiyor ve
+                 çalışma zamanında NoSuchMethodError (ExporterProperties.getPrometheusTimestampsInMs)
+                 oluşuyor. -->
+            <dependency>
+                <groupId>io.prometheus</groupId>
+                <artifactId>prometheus-metrics-bom</artifactId>
+                <version>1.3.10</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-starter-parent</artifactId>
