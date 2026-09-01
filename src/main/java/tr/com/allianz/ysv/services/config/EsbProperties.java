@@ -2,6 +2,7 @@ package tr.com.allianz.ysv.services.config;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import java.time.Duration;
 import lombok.Getter;
 import lombok.Setter;
@@ -59,5 +60,14 @@ public class EsbProperties {
          */
         @NotBlank
         private String sorguPath = "/api/rest/vergi-beyan-rs/v10/ysv-beyanname";
+
+        /**
+         * Sorgu isteğinin ESB proxy'sine hangi HTTP metoduyla gideceği. SBM tarafında sorgu
+         * fonksiyonu GET'tir, ancak ESB proxy'si tek path üzerinden çalıştığı için GET yerine
+         * POST ile yönlendirme bekleyebilir. İkisi de aynı JSON gövdeyi
+         * ({@code {sigortaSirketKodu, ysvDosyaNo}}) taşır. Ortam config'inden değiştirilir.
+         */
+        @Pattern(regexp = "GET|POST")
+        private String sorguMethod = "GET";
     }
 }

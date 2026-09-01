@@ -85,16 +85,18 @@ public class SbmClientService {
     }
 
     /**
-     * Beyanname sorgusu: {@code ysv-beyanname} üzerinde HTTP GET + JSON gövde
-     * {@code { "sigortaSirketKodu": "...", "ysvDosyaNo": "..." }}.
+     * Beyanname sorgusu: {@code ysv-beyanname} üzerinde JSON gövde
+     * {@code { "sigortaSirketKodu": "...", "ysvDosyaNo": "..." }} ile.
      *
-     * <p>SBM sorguyu GET metodu ama JSON gövde ile bekliyor (dökümandaki örnek). ESB proxy'si
-     * query string parametrelerini SBM'ye taşımadığı için (SC-UAT'ta {@code CORE-00004
-     * sigortaSirketKodu zorunlu} hatası alınmıştı) parametreler gövdede gönderilir. Apache
-     * HttpClient 5, GET gövdesini destekler.</p>
+     * <p>HTTP metodu {@code esb.ysv.sorgu-method} ile belirlenir (GET veya POST). SBM sorguyu
+     * GET bekler; ancak ESB proxy'si tek path üzerinden çalıştığından query string
+     * parametrelerini SBM'ye taşımıyor (SC-UAT'ta {@code CORE-00004} alınmıştı) — bu yüzden
+     * parametreler gövdede gönderilir ve gerekirse metot POST'a çekilir. Apache HttpClient 5
+     * GET gövdesini destekler.</p>
      */
     public SbmCallResult query(SbmQueryRequest request) {
-        return callWithRetry(HttpMethod.GET, esbProperties.sorguUrl(), request, OperationType.GET);
+        HttpMethod method = HttpMethod.valueOf(esbProperties.getYsv().getSorguMethod());
+        return callWithRetry(method, esbProperties.sorguUrl(), request, OperationType.GET);
     }
 
     private SbmCallResult callWithRetry(HttpMethod method, String url, Object body, OperationType operationType) {
