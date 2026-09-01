@@ -38,7 +38,7 @@ import tr.com.allianz.ysv.services.util.JsonUtil;
  * <ul>
  *   <li>{@link #send} — yeni beyanname, HTTP POST</li>
  *   <li>{@link #update} — güncelleme / iptal (tutar sıfırlama), HTTP PUT</li>
- *   <li>{@link #query} — sorgu, HTTP GET + query string (gövde yok)</li>
+ *   <li>{@link #query} — sorgu, HTTP GET + JSON gövde {@code {sigortaSirketKodu, ysvDosyaNo}}</li>
  * </ul>
  *
  * <p>Hatalar {@link SbmCallResult} olarak <b>döndürülür</b>, fırlatılmaz: çağıran her
