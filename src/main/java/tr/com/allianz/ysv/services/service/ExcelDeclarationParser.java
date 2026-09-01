@@ -112,9 +112,17 @@ public class ExcelDeclarationParser {
         Map<String, Integer> columns = new HashMap<>();
         for (int c = header.getFirstCellNum(); c < header.getLastCellNum(); c++) {
             Cell cell = header.getCell(c);
-            String name = asRawString(cell);
-            if (name != null && !name.isBlank()) {
-                columns.putIfAbsent(name.trim().toLowerCase(Locale.ROOT), c);
+            String raw = asRawString(cell);
+            if (raw == null || raw.isBlank()) {
+                continue;
+            }
+            String name = raw.trim().toLowerCase(Locale.ROOT);
+            columns.putIfAbsent(name, c);
+            // OPUS ekstresi bazen başlıkları "alinanPrimTutari1" gibi sondan rakamlı verir;
+            // rakam/boşlukları kırpılmış hâliyle de indeksle ki eşleşme bozulmasın.
+            String stripped = name.replaceAll("[0-9\\s]+$", "");
+            if (!stripped.isBlank() && !stripped.equals(name)) {
+                columns.putIfAbsent(stripped, c);
             }
         }
         return columns;

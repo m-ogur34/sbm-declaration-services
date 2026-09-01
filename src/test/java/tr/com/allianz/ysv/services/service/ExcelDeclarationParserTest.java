@@ -133,6 +133,24 @@ class ExcelDeclarationParserTest {
     }
 
     @Test
+    @DisplayName("başlıklarda sondan rakam varsa (alinanPrimTutari1) yine eşleşir")
+    void parse_headerWithTrailingDigits_stillMatches() throws IOException {
+        String[] headers = HEADERS.clone();
+        headers[7] = "alinanPrimTutari1";
+        headers[8] = "iptalPrimTutari1";
+
+        byte[] xlsx = workbook(headers, rows -> fullValidRow(rows.createRow(1), "YSV-H1"));
+
+        ParsedSheet sheet = parser.parse(new ByteArrayInputStream(xlsx));
+
+        assertThat(sheet.errors()).isEmpty();
+        assertThat(sheet.rows()).singleElement().satisfies(r -> {
+            assertThat(r.alinanPrimTutari()).isEqualByComparingTo(new java.math.BigDecimal("1000.00"));
+            assertThat(r.iptalPrimTutari()).isEqualByComparingTo(new java.math.BigDecimal("0.00"));
+        });
+    }
+
+    @Test
     void parse_missingRequiredHeader_rejectsWholeFile() throws IOException {
         String[] shortHeaders = {"ay", "ilKodu", "yil", "ysvDosyaNo"};
         byte[] xlsx = workbook(shortHeaders, rows -> rows.createRow(1).createCell(0).setCellValue(1));
