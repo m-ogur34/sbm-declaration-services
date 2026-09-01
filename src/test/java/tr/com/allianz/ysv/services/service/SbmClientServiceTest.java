@@ -50,8 +50,7 @@ class SbmClientServiceTest {
 
     private static final String BASE_URL = "http://esb.test.local:12000";
     private static final String BEYANNAME_URL = BASE_URL + "/api/rest/vergi-beyan-rs/v10/ysv-beyanname";
-    private static final String SORGU_URL =
-            BEYANNAME_URL + "?ysvDosyaNo=YSV202513491&sigortaSirketKodu=045";
+    private static final String SORGU_URL = BEYANNAME_URL;
     private static final String TRANSACTION_ID = "9d0e6c2e-6f2b-4c2a-9d3e-a1b2c3d4e5f6";
     private static final String ACCESS_TOKEN = "MOCK-TEST-ACCESS-TOKEN-VALUE";
 
@@ -183,12 +182,15 @@ class SbmClientServiceTest {
     }
 
     @Test
-    @DisplayName("query is a GET with the parameters in the query string and no body")
-    void query_isGetWithQueryString() {
+    @DisplayName("query is a GET carrying a JSON body {sigortaSirketKodu, ysvDosyaNo}")
+    void query_isGetWithJsonBody() {
         server.expect(requestTo(SORGU_URL))
                 .andExpect(method(HttpMethod.GET))
                 .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + ACCESS_TOKEN))
                 .andExpect(header("Requester-ID-No", "86773997310"))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.sigortaSirketKodu").value("045"))
+                .andExpect(jsonPath("$.ysvDosyaNo").value("YSV202513491"))
                 .andRespond(withSuccess(QUERY_SUCCESS_BODY, MediaType.APPLICATION_JSON)
                         .headers(transactionIdHeader()));
 

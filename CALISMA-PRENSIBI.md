@@ -228,8 +228,8 @@ bkz. §6):
 | sorgu | `/api/rest/vergi-beyan-rs/v10/ysv-beyanname` | `GET` |
 
 - Sorgu, gönder ile **aynı path**tir; ayrı bir `/sorgu` eki **yoktur**.
-- Sorguda parametreler **query string** ile gider, gövde yoktur:
-  `?ysvDosyaNo=YSV202513492&sigortaSirketKodu=045`
+- Sorgu **GET metodu ama JSON gövde** ile gider: `{ "sigortaSirketKodu": "045", "ysvDosyaNo": "..." }`.
+  (SC-UAT'ta query string denendi; OSB proxy parametreleri SBM'ye taşımadı → `CORE-00004`.)
 - Üç işlemde de header: `Authorization: Bearer ...`, `Requester-ID-Type`,
   `Requester-ID-No`, `Content-Type: application/json`.
 
@@ -297,7 +297,7 @@ Kurallar:
 **Güncelle (PUT):** `ay/yil/ilKodu/ilceKodu` yok; geri kalanı POST ile aynı.
 `ysvTutarList` menkul tipi başına bir eleman içerir.
 
-**Sorgu (GET):** query string — `?ysvDosyaNo=<...>&sigortaSirketKodu=045`
+**Sorgu (GET):** JSON gövde — `{ "sigortaSirketKodu": "045", "ysvDosyaNo": "<...>" }` (GET metodu + gövde).
 
 ### 5.4 Response zarfı — **tüm işlemlerde `{ result, data, status }`**
 
@@ -396,8 +396,8 @@ NEW ──gönder──▶ PROCESSING ──(2xx & result:true)──▶ SENT �
 - **Bağlantı yöntemi: düz HTTP (Spring `RestClient`).** `tr.com.allianz:ysv-services-rest-client`
   gibi bir istemci kütüphanesi **eklenmez** (iç Nexus'ta varlığı teyitli değil, düz
   HTTP yeterli). pom.xml'e ESB için hiçbir bağımlılık girmez.
-- GET-with-body yerine sorgu **query string** ile yapıldığından, Apache HttpClient 5
-  zorunluluğu ortadan kalkar; yine de pooling/timeout için kullanılabilir.
+- Sorgu **GET + JSON gövde** ile yapıldığından Apache HttpClient 5 gereklidir
+  (HttpURLConnection GET gövdesini düşürür).
 - ESB proxy path'i: uygulamanın ESB üzerinde çağıracağı gerçek yol
   `esb.ysv.beyanname-path` / `esb.ysv.sorgu-path` ile **config'den** verilir. Şu anki
   varsayılan SBM path'i ile aynıdır (`/api/rest/vergi-beyan-rs/v10/ysv-beyanname`);
@@ -489,7 +489,7 @@ OPUS ortam JDBC (referans, `Ortamlarin.DB.Erisim.bilgileri.docx`):
 | 2 | ESB bağlantısı | "düz HTTP" vs docx'teki `ysv-services-rest-client` | **Düz HTTP (RestClient)**, kütüphane eklenmez (§6) |
 | 3 | Alan tipleri | Tipli JSON (tablo), tırnaklı örnek "yanlış" | Tipli JSON **korunur**; VDI'da 1. POST ile doğrulanır, 422 gelirse ilgili alan string'e çevrilir (§5.2) |
 | 4 | SBM response zarfı | Kod alanları kök seviyede okuyor | Tüm yanıtlar `{ result, data, status }` — `data` üzerinden okunur (§5.4) |
-| 5 | Sorgu endpoint/metot | `.../ysv-beyanname/sorgu`, GET-with-body | Path gönderle **aynı**, `GET`, parametreler **query string** (§5.1) |
+| 5 | Sorgu endpoint/metot | `.../ysv-beyanname/sorgu`, GET-with-body | Path gönderle **aynı**; `GET` + **JSON gövde** `{sigortaSirketKodu, ysvDosyaNo}` (§5.1). SC-UAT testinde doğrulandı. |
 | 6 | Token `functionName` | enum'da sabit operasyon isimleri | Config'e taşınır, default `"test"` (§4.1) |
 
 Doğrulandı, kod zaten doğru: `Authorization: Bearer`; `Requester-ID-*` token'dan;
@@ -566,7 +566,7 @@ hem `GAYRIMENKUL` satırı içerir → `ysvTutarList` 2 elemanlı POST/PUT üret
   (mevcut: 0.85 / 0.80). `haltOnFailure = true`; `verify` fazında kırar.
 - Kapsam dışı (JaCoCo `excludes`): `*Application`, `dto/**`, `entity/**`,
   `*Properties`, `ErrorResponse`, `*MapperImpl`.
-- Yeni eklenen her sınıf (Excel import, response zarfı, sorgu query-string) için
+- Yeni eklenen her sınıf (Excel import, response zarfı, sorgu GET+gövde) için
   birim testi zorunlu; kapsam eşiği bunları da kapsar.
 - `mvn clean verify` yeşil olmadan PR açılmaz.
 

@@ -12,7 +12,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.util.UriComponentsBuilder;
 import tr.com.allianz.ysv.services.config.EsbProperties;
 import tr.com.allianz.ysv.services.config.RestClientConfig;
 import tr.com.allianz.ysv.services.config.SbmProperties;
@@ -86,19 +85,16 @@ public class SbmClientService {
     }
 
     /**
-     * Beyanname sorgusu: {@code ysv-beyanname} üzerinde HTTP GET.
+     * Beyanname sorgusu: {@code ysv-beyanname} üzerinde HTTP GET + JSON gövde
+     * {@code { "sigortaSirketKodu": "...", "ysvDosyaNo": "..." }}.
      *
-     * <p>SBM dökümanı ve ESB'den alınan başarılı capture, parametrelerin <b>query string</b>
-     * ile gittiğini gösteriyor ({@code ?ysvDosyaNo=...&sigortaSirketKodu=...}); GET gövdesi
-     * yoktur.</p>
+     * <p>SBM sorguyu GET metodu ama JSON gövde ile bekliyor (dökümandaki örnek). ESB proxy'si
+     * query string parametrelerini SBM'ye taşımadığı için (SC-UAT'ta {@code CORE-00004
+     * sigortaSirketKodu zorunlu} hatası alınmıştı) parametreler gövdede gönderilir. Apache
+     * HttpClient 5, GET gövdesini destekler.</p>
      */
     public SbmCallResult query(SbmQueryRequest request) {
-        String url = UriComponentsBuilder.fromUriString(esbProperties.sorguUrl())
-                .queryParam("ysvDosyaNo", request.getYsvDosyaNo())
-                .queryParam("sigortaSirketKodu", request.getSigortaSirketKodu())
-                .build()
-                .toUriString();
-        return callWithRetry(HttpMethod.GET, url, null, OperationType.GET);
+        return callWithRetry(HttpMethod.GET, esbProperties.sorguUrl(), request, OperationType.GET);
     }
 
     private SbmCallResult callWithRetry(HttpMethod method, String url, Object body, OperationType operationType) {
