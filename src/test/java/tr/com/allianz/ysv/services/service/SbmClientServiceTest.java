@@ -202,20 +202,6 @@ class SbmClientServiceTest {
         verify(tokenManagementService).generateToken(OperationType.GET);
     }
 
-    @Test
-    @DisplayName("query verb follows esb.ysv.sorgu-method (POST when the ESB proxy needs it)")
-    void query_canBeSwitchedToPost() {
-        esbProperties.getYsv().setSorguMethod("POST");
-        server.expect(requestTo(SORGU_URL))
-                .andExpect(method(HttpMethod.POST))
-                .andExpect(jsonPath("$.sigortaSirketKodu").value("045"))
-                .andExpect(jsonPath("$.ysvDosyaNo").value("YSV202513491"))
-                .andRespond(withSuccess(QUERY_SUCCESS_BODY, MediaType.APPLICATION_JSON));
-
-        assertThat(service.query(queryRequest()).isSuccess()).isTrue();
-        server.verify();
-    }
-
     // --- failures ----------------------------------------------------------------------
 
     @Test

@@ -25,7 +25,6 @@ esb:
   ysv:
     beyanname-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname
     sorgu-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname
-    sorgu-method: GET
   connect-timeout: 10s
   read-timeout: 60s
 

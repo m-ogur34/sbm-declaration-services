@@ -51,7 +51,6 @@ esb:
     beyanname-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname
     # Sorgu gönderle aynı path (GET); ESB proxy path'i farklıysa burada ezilir.
     sorgu-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname
-    sorgu-method: GET
   connect-timeout: 10s
   read-timeout: 60s
 
