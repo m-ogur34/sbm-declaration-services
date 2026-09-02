@@ -30,9 +30,9 @@ class RestClientConfigTest {
 
         assertThat(config.esbRestClient(properties)).isNotNull();
         assertThat(properties.beyannameUrl())
-                .isEqualTo("http://esb.test.local:12000/api/rest/vergi-beyan-rs/v10/ysv-beyanname");
+                .isEqualTo("http://esb.test.local:12000/sbmDeclarationServices");
         assertThat(properties.sorguUrl())
-                .isEqualTo("http://esb.test.local:12000/api/rest/vergi-beyan-rs/v10/ysv-beyanname");
+                .isEqualTo("http://esb.test.local:12000/sbmDeclarationServices");
     }
 
     @Test

@@ -33,8 +33,8 @@ esb:
   # (e.g. http://10.70.52.149:12000 for UAT).
   base-url: ${ESB_SERVER:http://esb.allianz.com.tr:12000}
   ysv:
-    beyanname-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname
-    sorgu-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname
+    beyanname-path: /sbmDeclarationServices
+    sorgu-path: /sbmDeclarationServices
   connect-timeout: 10s
   read-timeout: 60s
 

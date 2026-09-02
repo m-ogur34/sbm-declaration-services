@@ -8,8 +8,8 @@ spring:
 esb:
   base-url: http://esb.test.local:12000
   ysv:
-    beyanname-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname
-    sorgu-path: /api/rest/vergi-beyan-rs/v10/ysv-beyanname
+    beyanname-path: /sbmDeclarationServices
+    sorgu-path: /sbmDeclarationServices
   connect-timeout: 1s
   read-timeout: 2s
 

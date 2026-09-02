@@ -213,10 +213,12 @@ varsa temizle.
   doğrudan HTTP isteği atar. (`tr.com.allianz:ysv-services-rest-client` diye bir
   bağımlılık **yok**; eski notlarda geçtiyse yanlıştır.)
 - ⟳ SBM path'i (ESB'nin arkası): gönder/güncelle/sorgu **aynı** path
-  `/api/rest/vergi-beyan-rs/v10/ysv-beyanname`. Sorgu ayrı bir `/sorgu` eki
-  **değildir**; HTTP `GET` + **JSON gövde** `{sigortaSirketKodu, ysvDosyaNo}`. SC-UAT'ta
-  gerçek proxy path'i `/sbmDeclarationServices` (host:port `10.70.47.135:21011`),
-  `esb.ysv.*-path` + `ESB_SERVER` ile ezilir.
+  ESB **Proxy Service** path'i `/sbmDeclarationServices` (SC-UAT'ta doğrulandı; üç işlem
+  de aynı path). Proxy SBM Business Service'e (`.../v10/ysv-beyanname`) yönlendirir.
+  Host:port `ESB_SERVER` (SC-UAT = `10.70.47.135:21011`), path `esb.ysv.*-path`
+  (default `/sbmDeclarationServices`, `common-configs/application.yml`).
+  Sorgu: `GET` + JSON gövde `{sigortaSirketKodu, ysvDosyaNo}` (proxy GET route'u
+  düzeltilene kadar `CORE-00004` — ESB tarafında).
 - ⟳ `tr.com.allianz:ysv-services-rest-client` **eklenmez** (karar sabit); ESB düz HTTP
   `RestClient` ile çağrılır.
 

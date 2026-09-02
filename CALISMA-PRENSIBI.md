@@ -218,15 +218,20 @@ Content-Type: application/json
 
 ### 5.1 Endpoint'ler ve metotlar
 
-SBM'nin kendi adresleri (uygulama bunları **doğrudan çağırmaz**, ESB üzerinden gider —
-bkz. §6):
+Uygulama SBM'yi **doğrudan çağırmaz**; her istek ESB (OSB) **Proxy Service**'ine
+gider, proxy SBM'ye yönlendirir.
 
-| İşlem | SBM path | Metot |
-|---|---|---|
-| gönder | `/api/rest/vergi-beyan-rs/v10/ysv-beyanname` | `POST` |
-| güncelle | `/api/rest/vergi-beyan-rs/v10/ysv-beyanname` | `PUT` |
-| sorgu | `/api/rest/vergi-beyan-rs/v10/ysv-beyanname` | `GET` |
+| İşlem | Uygulamanın çağırdığı (ESB proxy) | Proxy → SBM (Business Service) | Metot |
+|---|---|---|---|
+| gönder | `<ESB_SERVER>/sbmDeclarationServices` | `.../v10/ysv-beyanname` | `POST` |
+| güncelle | `<ESB_SERVER>/sbmDeclarationServices` | `.../v10/ysv-beyanname` | `PUT` |
+| sorgu | `<ESB_SERVER>/sbmDeclarationServices` | `.../v10/ysv-beyanname` | `GET` |
 
+- **SC-UAT'ta doğrulandı** (2026-09-01): `ESB_SERVER = http://10.70.47.135:21011`,
+  proxy path `/sbmDeclarationServices` (üçü de aynı). Business Service SBM ŞİRKET TEST'e
+  (`https://testrs.sbm.org.tr/...`) gider.
+- Proxy path'i `esb.ysv.beyanname-path` / `sorgu-path` (default `/sbmDeclarationServices`,
+  `common-configs/application.yml`), host:port `ESB_SERVER` (ortam bazlı) ile verilir.
 - Sorgu, gönder ile **aynı path**tir; ayrı bir `/sorgu` eki **yoktur**.
 - Sorgu **GET metodu ama JSON gövde** ile gider: `{ "sigortaSirketKodu": "045", "ysvDosyaNo": "..." }`.
   (SC-UAT'ta query string denendi; OSB proxy parametreleri SBM'ye taşımadı → `CORE-00004`.)
@@ -398,10 +403,12 @@ NEW ──gönder──▶ PROCESSING ──(2xx & result:true)──▶ SENT �
   HTTP yeterli). pom.xml'e ESB için hiçbir bağımlılık girmez.
 - Sorgu **GET + JSON gövde** ile yapıldığından Apache HttpClient 5 gereklidir
   (HttpURLConnection GET gövdesini düşürür).
-- ESB proxy path'i: uygulamanın ESB üzerinde çağıracağı gerçek yol
-  `esb.ysv.beyanname-path` / `esb.ysv.sorgu-path` ile **config'den** verilir. Şu anki
-  varsayılan SBM path'i ile aynıdır (`/api/rest/vergi-beyan-rs/v10/ysv-beyanname`);
-  ESB ekibinden/OSB konsolundan kesin proxy URI teyit edilecek (VDI maddesi).
+- ESB proxy path'i **SC-UAT'ta doğrulandı**: `/sbmDeclarationServices` (üç işlem de),
+  `common-configs/application.yml` içinde default. Ortam farkı sadece `ESB_SERVER`
+  (host:port); SC-UAT = `http://10.70.47.135:21011`.
+- **Açık:** proxy'nin **sorgu (GET) route'u** `sigortaSirketKodu`/`ysvDosyaNo`'yu SBM'ye
+  taşımıyor (`CORE-00004`) — ESB tarafında düzeltilecek. POST/PUT sorunsuz. Proxy'nin
+  bu alanları gövdeden mi query string'den mi okuyacağı netleşince uygulama hizalanır.
 
 ---
 
@@ -501,8 +508,10 @@ token cache yok; her çağrıda taze token; `Transaction-Id` loglanıyor;
 ## 11. VDI'da doğrulanacak açık maddeler
 
 1. **Tipli gövde:** SC-TEST'e tipli JSON ile bir POST — 422 gelmiyor mu? (Gelirse §5.2 fallback.)
-2. **ESB proxy path'i:** OSB konsolundan/ESB ekibinden `beyanname-path` ve
-   sorgu için kesin proxy URI (ortam bazlı).
+2. **ESB sorgu (GET) route'u:** proxy `/sbmDeclarationServices` GET akışı
+   `sigortaSirketKodu`+`ysvDosyaNo`'yu SBM Business Service'e aktarmıyor (`CORE-00004`).
+   ESB ekibi düzeltince: proxy gövde mi query string mi bekliyor → uygulama hizalanır.
+   (POST/PUT ve proxy path `/sbmDeclarationServices` SC-UAT'ta doğrulandı.)
 3. **`ysv-services-rest-client`** iç Nexus'ta var mı — yoksa §6 kararı zaten geçerli,
    varsa bile eklenmeyecek (bilgi amaçlı).
 4. **Token `functionName`:** token ekibi (Hüseyin Dağ / Ömer Faruk Ceylan) operasyona

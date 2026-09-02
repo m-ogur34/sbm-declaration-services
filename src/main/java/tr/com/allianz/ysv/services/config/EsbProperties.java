@@ -50,14 +50,17 @@ public class EsbProperties {
     @Setter
     public static class Ysv {
 
-        @NotBlank
-        private String beyannamePath = "/api/rest/vergi-beyan-rs/v10/ysv-beyanname";
-
         /**
-         * SBM dökümanında sorgu, gönderle aynı path üzerinde GET metodudur (ayrı bir
-         * {@code /sorgu} eki yoktur). ESB proxy path'i farklıysa ortam config'inden ezilir.
+         * ESB (OSB) Proxy Service endpoint URI'si. SC-UAT'ta doğrulandı: gönder/güncelle/sorgu
+         * tek proxy path'i üzerinden çalışır ({@code /sbmDeclarationServices}); proxy SBM'nin
+         * gerçek adresine ({@code .../api/rest/vergi-beyan-rs/v10/ysv-beyanname}) yönlendirir.
+         * Tüm Allianz OSB ortamlarında aynıdır; ortam farkı sadece {@code base-url}'dedir.
          */
         @NotBlank
-        private String sorguPath = "/api/rest/vergi-beyan-rs/v10/ysv-beyanname";
+        private String beyannamePath = "/sbmDeclarationServices";
+
+        /** Sorgu da aynı proxy path'i (bkz. {@link #beyannamePath}). */
+        @NotBlank
+        private String sorguPath = "/sbmDeclarationServices";
     }
 }
