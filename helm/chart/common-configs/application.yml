@@ -51,7 +51,7 @@ esb:
     # OSB Proxy Service endpoint URI (SC-UAT'ta doğrulandı). Tüm ortamlarda aynı;
     # host:port ESB_SERVER'dan gelir. Proxy SBM'nin gerçek adresine yönlendirir.
     beyanname-path: /sbmDeclarationServices
-    sorgu-path: /sbmDeclarationServices
+    sorgu-path: /sbmDeclarationServicesSorgu
   connect-timeout: 10s
   read-timeout: 60s
 

@@ -225,18 +225,20 @@ gider, proxy SBM'ye yönlendirir.
 |---|---|---|---|
 | gönder | `<ESB_SERVER>/sbmDeclarationServices` | `.../v10/ysv-beyanname` | `POST` |
 | güncelle | `<ESB_SERVER>/sbmDeclarationServices` | `.../v10/ysv-beyanname` | `PUT` |
-| sorgu | `<ESB_SERVER>/sbmDeclarationServices` | `.../v10/ysv-beyanname` | `GET` |
+| sorgu | `<ESB_SERVER>/sbmDeclarationServicesSorgu` | `.../v10/ysv-beyanname` (+ query string) | `GET` |
 
-- **SC-UAT'ta doğrulandı** (2026-09-01): `ESB_SERVER = http://10.70.47.135:21011`,
-  proxy path `/sbmDeclarationServices` (üçü de aynı). Business Service SBM ŞİRKET TEST'e
-  (`https://testrs.sbm.org.tr/...`) gider.
-- Proxy path'i `esb.ysv.beyanname-path` / `sorgu-path` (default `/sbmDeclarationServices`,
-  `common-configs/application.yml`), host:port `ESB_SERVER` (ortam bazlı) ile verilir.
-- Sorgu, gönder ile **aynı path**tir; ayrı bir `/sorgu` eki **yoktur**.
-- Sorgu **GET + query string** ile gider: `?sigortaSirketKodu=045&ysvDosyaNo=...`
-  (SBM dökümanındaki Postman örneği; gövde yoktur). SC-UAT'ta OSB proxy'si GET'te bu
-  parametreleri SBM'ye taşımıyordu → `CORE-00004`; düzeltme **ESB tarafında** (proxy GET
-  route'u). Uygulama SBM sözleşmesine uygun; ESB proxy düzelince sorgu çalışır.
+- **Gönder/güncelle SC-UAT'ta doğrulandı** (2026-09-01): `ESB_SERVER =
+  http://10.70.47.135:21011`, proxy path `/sbmDeclarationServices`. Business Service SBM
+  ŞİRKET TEST'e (`https://testrs.sbm.org.tr/...`) gider.
+- **Sorgu ayrı proxy** (2026-09-03): `/sbmDeclarationServicesSorgu` → ayrı pipeline + ayrı
+  Business Service. Tek proxy ile GET'in query parametreleri (`sigortaSirketKodu`,
+  `ysvDosyaNo`) SBM'ye taşınmıyordu → `CORE-00004`. Sorguya özel pipeline'ın inbound query
+  parametrelerini ve token header'larını outbound isteğe kopyalaması gerekir.
+- Path'ler `esb.ysv.beyanname-path` (`/sbmDeclarationServices`) / `sorgu-path`
+  (`/sbmDeclarationServicesSorgu`), `common-configs/application.yml`; host:port
+  `ESB_SERVER` (ortam bazlı).
+- Sorgu **GET + query string** ile gider: `?sigortaSirketKodu=045&ysvDosyaNo=...` (gövde
+  yoktur; SBM Postman örneği).
 - Üç işlemde de header: `Authorization: Bearer ...`, `Requester-ID-Type`,
   `Requester-ID-No`, `Content-Type: application/json`.
 
@@ -405,12 +407,13 @@ NEW ──gönder──▶ PROCESSING ──(2xx & result:true)──▶ SENT �
   HTTP yeterli). pom.xml'e ESB için hiçbir bağımlılık girmez.
 - HTTP istemcisi **Apache HttpClient 5** tabanlıdır (bağlantı havuzu + connect/read
   timeout'ların ayrı ayrı kontrolü). Sorgu GET + query string olduğu için gövde sorunu yok.
-- ESB proxy path'i **SC-UAT'ta doğrulandı**: `/sbmDeclarationServices` (üç işlem de),
-  `common-configs/application.yml` içinde default. Ortam farkı sadece `ESB_SERVER`
-  (host:port); SC-UAT = `http://10.70.47.135:21011`.
-- **Açık:** proxy'nin **sorgu (GET) route'u** `sigortaSirketKodu`/`ysvDosyaNo`'yu SBM'ye
-  taşımıyor (`CORE-00004`) — ESB tarafında düzeltilecek. POST/PUT sorunsuz. Proxy'nin
-  bu alanları gövdeden mi query string'den mi okuyacağı netleşince uygulama hizalanır.
+- ESB proxy path'leri (`common-configs/application.yml`): gönder/güncelle
+  `/sbmDeclarationServices` (**SC-UAT'ta doğrulandı**), sorgu `/sbmDeclarationServicesSorgu`
+  (ayrı proxy, 2026-09-03). Ortam farkı sadece `ESB_SERVER` (host:port); SC-UAT managed =
+  `http://10.70.47.135:21011`.
+- **Açık:** sorgu (GET) `/sbmDeclarationServicesSorgu` pipeline'ı SC-UAT'ta doğrulanacak —
+  inbound query parametreleri (`sigortaSirketKodu`, `ysvDosyaNo`) + token header'ları
+  outbound Business Service isteğine kopyalanmalı. POST/PUT sorunsuz.
 
 ---
 
@@ -498,7 +501,7 @@ OPUS ortam JDBC (referans, `Ortamlarin.DB.Erisim.bilgileri.docx`):
 | 2 | ESB bağlantısı | "düz HTTP" vs docx'teki `ysv-services-rest-client` | **Düz HTTP (RestClient)**, kütüphane eklenmez (§6) |
 | 3 | Alan tipleri | Tipli JSON (tablo), tırnaklı örnek "yanlış" | Tipli JSON **korunur**; VDI'da 1. POST ile doğrulanır, 422 gelirse ilgili alan string'e çevrilir (§5.2) |
 | 4 | SBM response zarfı | Kod alanları kök seviyede okuyor | Tüm yanıtlar `{ result, data, status }` — `data` üzerinden okunur (§5.4) |
-| 5 | Sorgu endpoint/metot | `.../ysv-beyanname/sorgu` | Path gönderle **aynı**; `GET` + **query string** `?sigortaSirketKodu=045&ysvDosyaNo=...` (SBM Postman örneği, §5.1). OSB proxy GET route'u düzeltilene kadar `CORE-00004` — ESB tarafı. |
+| 5 | Sorgu endpoint/metot | `.../ysv-beyanname/sorgu` | **Ayrı** ESB proxy path'i `/sbmDeclarationServicesSorgu` (§5.1); `GET` + **query string** `?sigortaSirketKodu=045&ysvDosyaNo=...` (SBM Postman örneği). Sorguya özel OSB pipeline'ı gerekti — tek proxy GET parametrelerini SBM'ye taşımıyordu (`CORE-00004`). |
 | 6 | Token `functionName` | enum'da sabit operasyon isimleri | Config'e taşınır, default `"test"` (§4.1) |
 
 Doğrulandı, kod zaten doğru: `Authorization: Bearer`; `Requester-ID-*` token'dan;
@@ -510,10 +513,12 @@ token cache yok; her çağrıda taze token; `Transaction-Id` loglanıyor;
 ## 11. VDI'da doğrulanacak açık maddeler
 
 1. **Tipli gövde:** SC-TEST'e tipli JSON ile bir POST — 422 gelmiyor mu? (Gelirse §5.2 fallback.)
-2. **ESB sorgu (GET) route'u:** proxy `/sbmDeclarationServices` GET akışı
-   `sigortaSirketKodu`+`ysvDosyaNo`'yu SBM Business Service'e aktarmıyor (`CORE-00004`).
-   ESB ekibi düzeltince: proxy gövde mi query string mi bekliyor → uygulama hizalanır.
-   (POST/PUT ve proxy path `/sbmDeclarationServices` SC-UAT'ta doğrulandı.)
+2. **ESB sorgu (GET) pipeline'ı:** sorguya özel proxy `/sbmDeclarationServicesSorgu` +
+   ayrı pipeline + ayrı Business Service kuruldu (2026-09-03). Pipeline inbound query
+   parametrelerini (`sigortaSirketKodu`, `ysvDosyaNo`) ve token header'larını outbound
+   Business Service isteğine kopyalamalı; Business Service URL'i SBM sorgu dökümanına göre
+   doğrulanmalı (`.../v10/ysv-beyanname` mi `.../sorgu` mu). SC-UAT'ta test edilecek.
+   (POST/PUT ve `/sbmDeclarationServices` SC-UAT'ta doğrulandı.)
 3. **`ysv-services-rest-client`** iç Nexus'ta var mı — yoksa §6 kararı zaten geçerli,
    varsa bile eklenmeyecek (bilgi amaçlı).
 4. **Token `functionName`:** token ekibi (Hüseyin Dağ / Ömer Faruk Ceylan) operasyona
