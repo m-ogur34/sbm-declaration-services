@@ -217,8 +217,9 @@ varsa temizle.
   de aynı path). Proxy SBM Business Service'e (`.../v10/ysv-beyanname`) yönlendirir.
   Host:port `ESB_SERVER` (SC-UAT = `10.70.47.135:21011`), path `esb.ysv.*-path`
   (default `/sbmDeclarationServices`, `common-configs/application.yml`).
-  Sorgu: `GET` + JSON gövde `{sigortaSirketKodu, ysvDosyaNo}` (proxy GET route'u
-  düzeltilene kadar `CORE-00004` — ESB tarafında).
+  Sorgu: `GET` + query string `?sigortaSirketKodu=045&ysvDosyaNo=...` (SBM Postman
+  örneği; gövde yok). Proxy GET route'u parametreleri taşımadığı sürece `CORE-00004` —
+  düzeltme ESB tarafında.
 - ⟳ `tr.com.allianz:ysv-services-rest-client` **eklenmez** (karar sabit); ESB düz HTTP
   `RestClient` ile çağrılır.
 

@@ -182,15 +182,12 @@ class SbmClientServiceTest {
     }
 
     @Test
-    @DisplayName("query is a GET carrying a JSON body {sigortaSirketKodu, ysvDosyaNo}")
-    void query_isGetWithJsonBody() {
-        server.expect(requestTo(SORGU_URL))
+    @DisplayName("query is a GET carrying sigortaSirketKodu + ysvDosyaNo as query-string params")
+    void query_isGetWithQueryStringParams() {
+        server.expect(requestTo(SORGU_URL + "?sigortaSirketKodu=045&ysvDosyaNo=YSV202513491"))
                 .andExpect(method(HttpMethod.GET))
                 .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + ACCESS_TOKEN))
                 .andExpect(header("Requester-ID-No", "86773997310"))
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.sigortaSirketKodu").value("045"))
-                .andExpect(jsonPath("$.ysvDosyaNo").value("YSV202513491"))
                 .andRespond(withSuccess(QUERY_SUCCESS_BODY, MediaType.APPLICATION_JSON)
                         .headers(transactionIdHeader()));
 

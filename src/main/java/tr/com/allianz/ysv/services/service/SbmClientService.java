@@ -12,6 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.util.UriComponentsBuilder;
 import tr.com.allianz.ysv.services.config.EsbProperties;
 import tr.com.allianz.ysv.services.config.RestClientConfig;
 import tr.com.allianz.ysv.services.config.SbmProperties;
@@ -38,7 +39,7 @@ import tr.com.allianz.ysv.services.util.JsonUtil;
  * <ul>
  *   <li>{@link #send} — yeni beyanname, HTTP POST</li>
  *   <li>{@link #update} — güncelleme / iptal (tutar sıfırlama), HTTP PUT</li>
- *   <li>{@link #query} — sorgu, HTTP GET + JSON gövde {@code {sigortaSirketKodu, ysvDosyaNo}}</li>
+ *   <li>{@link #query} — sorgu, HTTP GET + query string {@code ?sigortaSirketKodu=...&ysvDosyaNo=...}</li>
  * </ul>
  *
  * <p>Hatalar {@link SbmCallResult} olarak <b>döndürülür</b>, fırlatılmaz: çağıran her
@@ -85,16 +86,19 @@ public class SbmClientService {
     }
 
     /**
-     * Beyanname sorgusu: {@code ysv-beyanname} üzerinde HTTP GET + JSON gövde
-     * {@code { "sigortaSirketKodu": "...", "ysvDosyaNo": "..." }}.
+     * Beyanname sorgusu: {@code ysv-beyanname} üzerinde HTTP GET; parametreler
+     * <b>query string</b> ile taşınır ({@code ?sigortaSirketKodu=045&ysvDosyaNo=...}).
      *
-     * <p>SBM sorguyu GET metodu ama JSON gövde ile bekliyor (dökümandaki örnek). ESB proxy'si
-     * query string parametrelerini SBM'ye taşımadığı için (SC-UAT'ta {@code CORE-00004
-     * sigortaSirketKodu zorunlu} hatası alınmıştı) parametreler gövdede gönderilir. Apache
-     * HttpClient 5, GET gövdesini destekler.</p>
+     * <p>SBM dökümanındaki Postman örneği sorguyu bu şekilde tanımlar; gövde yoktur.
+     * {@code request} nesnesi audit log'a yazılacak istek özeti için {@code call}'a
+     * verilir ama HTTP gövdesi olarak gönderilmez (bkz. {@link #call}).</p>
      */
     public SbmCallResult query(SbmQueryRequest request) {
-        return callWithRetry(HttpMethod.GET, esbProperties.sorguUrl(), request, OperationType.GET);
+        String url = UriComponentsBuilder.fromUriString(esbProperties.sorguUrl())
+                .queryParam("sigortaSirketKodu", request.getSigortaSirketKodu())
+                .queryParam("ysvDosyaNo", request.getYsvDosyaNo())
+                .toUriString();
+        return callWithRetry(HttpMethod.GET, url, request, OperationType.GET);
     }
 
     private SbmCallResult callWithRetry(HttpMethod method, String url, Object body, OperationType operationType) {
@@ -129,7 +133,8 @@ public class SbmClientService {
             RestClient.RequestBodySpec spec = esbRestClient.method(method)
                     .uri(url)
                     .headers(headers -> applyAuthHeaders(headers, token));
-            if (body != null) {
+            // GET'te gövde gönderilmez; sorgu parametreleri URL'de query string olarak taşınır.
+            if (body != null && method != HttpMethod.GET) {
                 spec.contentType(MediaType.APPLICATION_JSON).body(body);
             }
             return spec.exchange((request, response) -> toResult(response, requestPayload, operationType));

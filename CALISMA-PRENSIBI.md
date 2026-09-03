@@ -233,8 +233,10 @@ gider, proxy SBM'ye yönlendirir.
 - Proxy path'i `esb.ysv.beyanname-path` / `sorgu-path` (default `/sbmDeclarationServices`,
   `common-configs/application.yml`), host:port `ESB_SERVER` (ortam bazlı) ile verilir.
 - Sorgu, gönder ile **aynı path**tir; ayrı bir `/sorgu` eki **yoktur**.
-- Sorgu **GET metodu ama JSON gövde** ile gider: `{ "sigortaSirketKodu": "045", "ysvDosyaNo": "..." }`.
-  (SC-UAT'ta query string denendi; OSB proxy parametreleri SBM'ye taşımadı → `CORE-00004`.)
+- Sorgu **GET + query string** ile gider: `?sigortaSirketKodu=045&ysvDosyaNo=...`
+  (SBM dökümanındaki Postman örneği; gövde yoktur). SC-UAT'ta OSB proxy'si GET'te bu
+  parametreleri SBM'ye taşımıyordu → `CORE-00004`; düzeltme **ESB tarafında** (proxy GET
+  route'u). Uygulama SBM sözleşmesine uygun; ESB proxy düzelince sorgu çalışır.
 - Üç işlemde de header: `Authorization: Bearer ...`, `Requester-ID-Type`,
   `Requester-ID-No`, `Content-Type: application/json`.
 
@@ -302,7 +304,7 @@ Kurallar:
 **Güncelle (PUT):** `ay/yil/ilKodu/ilceKodu` yok; geri kalanı POST ile aynı.
 `ysvTutarList` menkul tipi başına bir eleman içerir.
 
-**Sorgu (GET):** JSON gövde — `{ "sigortaSirketKodu": "045", "ysvDosyaNo": "<...>" }` (GET metodu + gövde).
+**Sorgu (GET):** query string — `?sigortaSirketKodu=045&ysvDosyaNo=<...>` (gövde yok).
 
 ### 5.4 Response zarfı — **tüm işlemlerde `{ result, data, status }`**
 
@@ -401,8 +403,8 @@ NEW ──gönder──▶ PROCESSING ──(2xx & result:true)──▶ SENT �
 - **Bağlantı yöntemi: düz HTTP (Spring `RestClient`).** `tr.com.allianz:ysv-services-rest-client`
   gibi bir istemci kütüphanesi **eklenmez** (iç Nexus'ta varlığı teyitli değil, düz
   HTTP yeterli). pom.xml'e ESB için hiçbir bağımlılık girmez.
-- Sorgu **GET + JSON gövde** ile yapıldığından Apache HttpClient 5 gereklidir
-  (HttpURLConnection GET gövdesini düşürür).
+- HTTP istemcisi **Apache HttpClient 5** tabanlıdır (bağlantı havuzu + connect/read
+  timeout'ların ayrı ayrı kontrolü). Sorgu GET + query string olduğu için gövde sorunu yok.
 - ESB proxy path'i **SC-UAT'ta doğrulandı**: `/sbmDeclarationServices` (üç işlem de),
   `common-configs/application.yml` içinde default. Ortam farkı sadece `ESB_SERVER`
   (host:port); SC-UAT = `http://10.70.47.135:21011`.
@@ -496,7 +498,7 @@ OPUS ortam JDBC (referans, `Ortamlarin.DB.Erisim.bilgileri.docx`):
 | 2 | ESB bağlantısı | "düz HTTP" vs docx'teki `ysv-services-rest-client` | **Düz HTTP (RestClient)**, kütüphane eklenmez (§6) |
 | 3 | Alan tipleri | Tipli JSON (tablo), tırnaklı örnek "yanlış" | Tipli JSON **korunur**; VDI'da 1. POST ile doğrulanır, 422 gelirse ilgili alan string'e çevrilir (§5.2) |
 | 4 | SBM response zarfı | Kod alanları kök seviyede okuyor | Tüm yanıtlar `{ result, data, status }` — `data` üzerinden okunur (§5.4) |
-| 5 | Sorgu endpoint/metot | `.../ysv-beyanname/sorgu`, GET-with-body | Path gönderle **aynı**; `GET` + **JSON gövde** `{sigortaSirketKodu, ysvDosyaNo}` (§5.1). SC-UAT testinde doğrulandı. |
+| 5 | Sorgu endpoint/metot | `.../ysv-beyanname/sorgu` | Path gönderle **aynı**; `GET` + **query string** `?sigortaSirketKodu=045&ysvDosyaNo=...` (SBM Postman örneği, §5.1). OSB proxy GET route'u düzeltilene kadar `CORE-00004` — ESB tarafı. |
 | 6 | Token `functionName` | enum'da sabit operasyon isimleri | Config'e taşınır, default `"test"` (§4.1) |
 
 Doğrulandı, kod zaten doğru: `Authorization: Bearer`; `Requester-ID-*` token'dan;
@@ -575,7 +577,7 @@ hem `GAYRIMENKUL` satırı içerir → `ysvTutarList` 2 elemanlı POST/PUT üret
   (mevcut: 0.85 / 0.80). `haltOnFailure = true`; `verify` fazında kırar.
 - Kapsam dışı (JaCoCo `excludes`): `*Application`, `dto/**`, `entity/**`,
   `*Properties`, `ErrorResponse`, `*MapperImpl`.
-- Yeni eklenen her sınıf (Excel import, response zarfı, sorgu GET+gövde) için
+- Yeni eklenen her sınıf (Excel import, response zarfı, sorgu GET+query string) için
   birim testi zorunlu; kapsam eşiği bunları da kapsar.
 - `mvn clean verify` yeşil olmadan PR açılmaz.
 
