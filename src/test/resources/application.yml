@@ -9,7 +9,7 @@ esb:
   base-url: http://esb.test.local:12000
   ysv:
     beyanname-path: /sbmDeclarationServices
-    sorgu-path: /sbmDeclarationServicesSorgu
+    sorgu-path: /sbmDeclarationServices
   connect-timeout: 1s
   read-timeout: 2s
 

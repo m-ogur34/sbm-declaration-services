@@ -212,14 +212,14 @@ varsa temizle.
 - **pom.xml'e ESB için hiçbir dependency eklenmez.** Uygulama ESB URL'ine
   doğrudan HTTP isteği atar. (`tr.com.allianz:ysv-services-rest-client` diye bir
   bağımlılık **yok**; eski notlarda geçtiyse yanlıştır.)
-- ⟳ ESB **Proxy Service** path'leri — gönder/güncelle ile sorgu **ayrı**:
-  - Gönder/güncelle (POST/PUT): `/sbmDeclarationServices` → Business Service `.../v10/ysv-beyanname`
-  - Sorgu (GET): `/sbmDeclarationServicesSorgu` → **ayrı** proxy + pipeline + Business Service.
-    GET'in query parametrelerini (`sigortaSirketKodu`, `ysvDosyaNo`) SBM'ye taşıyabilmek
-    için tek proxy yetmedi; OSB'de sorguya özel pipeline kuruldu (2026-09-03).
-  Host:port `ESB_SERVER` (SC-UAT managed = `10.70.47.135:21011`), path'ler `esb.ysv.*-path`
-  (`common-configs/application.yml`). Sorgu: `GET` + query string
-  `?sigortaSirketKodu=045&ysvDosyaNo=...`, gövde yok (SBM Postman örneği).
+- ⟳ SBM path'i (ESB'nin arkası): gönder/güncelle/sorgu **aynı** path
+  ESB **Proxy Service** path'i `/sbmDeclarationServices` (SC-UAT'ta doğrulandı; üç işlem
+  de aynı path). Proxy SBM Business Service'e (`.../v10/ysv-beyanname`) yönlendirir.
+  Host:port `ESB_SERVER` (SC-UAT = `10.70.47.135:21011`), path `esb.ysv.*-path`
+  (default `/sbmDeclarationServices`, `common-configs/application.yml`).
+  Sorgu: `GET` + query string `?sigortaSirketKodu=045&ysvDosyaNo=...` (SBM Postman
+  örneği; gövde yok). Proxy GET route'u parametreleri taşımadığı sürece `CORE-00004` —
+  düzeltme ESB tarafında.
 - ⟳ `tr.com.allianz:ysv-services-rest-client` **eklenmez** (karar sabit); ESB düz HTTP
   `RestClient` ile çağrılır.
 

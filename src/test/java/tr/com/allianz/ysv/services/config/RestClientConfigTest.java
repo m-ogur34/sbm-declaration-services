@@ -32,7 +32,7 @@ class RestClientConfigTest {
         assertThat(properties.beyannameUrl())
                 .isEqualTo("http://esb.test.local:12000/sbmDeclarationServices");
         assertThat(properties.sorguUrl())
-                .isEqualTo("http://esb.test.local:12000/sbmDeclarationServicesSorgu");
+                .isEqualTo("http://esb.test.local:12000/sbmDeclarationServices");
     }
 
     @Test

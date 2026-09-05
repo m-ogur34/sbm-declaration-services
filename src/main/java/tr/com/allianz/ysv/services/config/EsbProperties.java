@@ -13,10 +13,9 @@ import org.springframework.validation.annotation.Validated;
  *
  * <p>Uygulama {@code rs.sbm.org.tr} adreslerini asla doğrudan çağırmaz; her ortam için
  * tek bir ESB base-url kullanılır ({@code esb.allianz.com.tr:12000}) ve ESB isteği kendi
- * ortamına karşılık gelen SBM adresine yönlendirir. Gönder/güncelle bir proxy path'i
- * ({@code /sbmDeclarationServices}, POST/PUT), sorgu ise ayrı bir proxy path'i
- * ({@code /sbmDeclarationServicesSorgu}, GET + query string) kullanır — GET
- * parametrelerinin SBM'ye taşınabilmesi için OSB'de ayrı pipeline gerekti.</p>
+ * ortamına karşılık gelen SBM adresine yönlendirir. Gönder/güncelle ve sorgu <b>aynı</b>
+ * path'tedir; sorgu sadece HTTP GET olması ve parametreleri query string ile taşımasıyla
+ * ayrılır.</p>
  */
 @Getter
 @Setter
@@ -52,21 +51,16 @@ public class EsbProperties {
     public static class Ysv {
 
         /**
-         * Gönder/güncelle için ESB (OSB) Proxy Service endpoint URI'si
-         * ({@code /sbmDeclarationServices}). Proxy, SBM'nin gerçek adresine
-         * ({@code .../api/rest/vergi-beyan-rs/v10/ysv-beyanname}) yönlendirir. Tüm Allianz
-         * OSB ortamlarında aynıdır; ortam farkı sadece {@code base-url}'dedir.
+         * ESB (OSB) Proxy Service endpoint URI'si. SC-UAT'ta doğrulandı: gönder/güncelle/sorgu
+         * tek proxy path'i üzerinden çalışır ({@code /sbmDeclarationServices}); proxy SBM'nin
+         * gerçek adresine ({@code .../api/rest/vergi-beyan-rs/v10/ysv-beyanname}) yönlendirir.
+         * Tüm Allianz OSB ortamlarında aynıdır; ortam farkı sadece {@code base-url}'dedir.
          */
         @NotBlank
         private String beyannamePath = "/sbmDeclarationServices";
 
-        /**
-         * Sorgu (GET) için <b>ayrı</b> Proxy Service path'i
-         * ({@code /sbmDeclarationServicesSorgu}). GET'in query parametrelerini
-         * ({@code sigortaSirketKodu}, {@code ysvDosyaNo}) SBM'ye taşıyabilmek için
-         * gönder/güncelle proxy'sinden ayrı bir pipeline'a bağlıdır.
-         */
+        /** Sorgu da aynı proxy path'i (bkz. {@link #beyannamePath}). */
         @NotBlank
-        private String sorguPath = "/sbmDeclarationServicesSorgu";
+        private String sorguPath = "/sbmDeclarationServices";
     }
 }

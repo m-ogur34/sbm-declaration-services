@@ -24,7 +24,7 @@ esb:
   base-url: ${ESB_SERVER:http://esb.allianz.com.tr:12000}
   ysv:
     beyanname-path: /sbmDeclarationServices
-    sorgu-path: /sbmDeclarationServicesSorgu
+    sorgu-path: /sbmDeclarationServices
   connect-timeout: 10s
   read-timeout: 60s
 

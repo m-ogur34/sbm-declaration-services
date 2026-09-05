@@ -50,7 +50,7 @@ class SbmClientServiceTest {
 
     private static final String BASE_URL = "http://esb.test.local:12000";
     private static final String BEYANNAME_URL = BASE_URL + "/sbmDeclarationServices";
-    private static final String SORGU_URL = BASE_URL + "/sbmDeclarationServicesSorgu";
+    private static final String SORGU_URL = BEYANNAME_URL;
     private static final String TRANSACTION_ID = "9d0e6c2e-6f2b-4c2a-9d3e-a1b2c3d4e5f6";
     private static final String ACCESS_TOKEN = "MOCK-TEST-ACCESS-TOKEN-VALUE";
 
