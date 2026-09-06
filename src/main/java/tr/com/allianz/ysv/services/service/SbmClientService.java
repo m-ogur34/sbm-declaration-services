@@ -129,6 +129,8 @@ public class SbmClientService {
     private SbmCallResult call(HttpMethod method, String url, Object body, OperationType operationType) {
         String requestPayload = body == null ? null : jsonUtil.toJson(body);
         TokenResponse token = tokenManagementService.generateToken(operationType);
+        // ESB yönlendirmesini izlemek için: her SBM çağrısının gittiği tam URL loglanır.
+        log.info("SBM {} call -> {} {}", operationType, method, url);
         try {
             RestClient.RequestBodySpec spec = esbRestClient.method(method)
                     .uri(url)
