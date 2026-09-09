@@ -1,0 +1,345 @@
+{
+  "info": {
+    "_postman_id": "sbm-ysv-prep-0001",
+    "name": "SBM Declaration Services (YSV) - prep",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "YSV beyanname gonder / guncelle / sorgu / iptal testleri (prep ortami).\n\nKATMANLAR:\n  A - Token        : alz-token-management (SC-TEST ucu; tum ortamlardan token verir). Onu calistir, accessToken + Requester-ID-* otomatik degiskene yazilir.\n  B - ESB Proxy    : http://esb.allianz.com.tr:12000/sbmDeclarationServices  (ASIL test katmani). gonder=POST, guncelle=PUT, sorgu=GET+query string, iptal=PUT (tutarlar 0).\n  C - App REST API : Uygulamanin kendi ucu (context-path /sbm-declaration-services). appBaseUrl degiskenini prep host ile doldur.\n  D - SBM Direct   : SADECE TESHIS. prers.sbm.org.tr Allianz ic DNS'te 176.235.131.9. VDI IP'si SBM whitelist'inde olmadigi icin buradan ETIMEDOUT beklenir - normaldir, B katmanini kullan.\n\nDEGISKENLER (Collection variables sekmesi):\n  appBaseUrl  -> https://<PREP-HOST>/sbm-declaration-services  (DUZENLE)\n  apiKey      -> prep'te api-guard aciksa ve API_GUARD_API_KEY secret'i doluysa X-Api-Key doldur\n  ysvDosyaNo  -> test dosya no\n  tokenUserName / tokenFunctionName -> token ekibi teyidi bekliyor (default test / WDA2422_16178)"
+  },
+  "variable": [
+    { "key": "tokenBaseUrl", "value": "https://int-sc-test-auth.allianz.com.tr" },
+    { "key": "tokenPath", "value": "/alz-token-management/api/v1/tokens/sbm-token-generate" },
+    { "key": "tokenClientName", "value": "ysv" },
+    { "key": "tokenFunctionName", "value": "test" },
+    { "key": "tokenUserName", "value": "WDA2422_16178" },
+    { "key": "companyCode", "value": "045" },
+    { "key": "esbBaseUrl", "value": "http://esb.allianz.com.tr:12000" },
+    { "key": "esbPath", "value": "/sbmDeclarationServices" },
+    { "key": "appBaseUrl", "value": "https://PREP-HOST/sbm-declaration-services" },
+    { "key": "sbmDirectBaseUrl", "value": "https://prers.sbm.org.tr/api/rest/vergi-beyan-rs/v10" },
+    { "key": "xUserName", "value": "m.ogur" },
+    { "key": "apiKey", "value": "" },
+    { "key": "ysvDosyaNo", "value": "YSV2026PREP01" },
+    { "key": "accessToken", "value": "" },
+    { "key": "requesterIdType", "value": "" },
+    { "key": "requesterIdNo", "value": "" },
+    { "key": "transactionId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "A - Token",
+      "item": [
+        {
+          "name": "Generate SBM token",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const uuid = (typeof crypto !== 'undefined' && crypto.randomUUID)",
+                  "  ? crypto.randomUUID()",
+                  "  : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {",
+                  "      const r = Math.random() * 16 | 0;",
+                  "      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);",
+                  "    });",
+                  "pm.collectionVariables.set('transactionId', uuid);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('accessToken', json.accessToken || '');",
+                  "if (json.clientCredentials) {",
+                  "  pm.collectionVariables.set('requesterIdType', String(json.clientCredentials.clientIdentityType));",
+                  "  pm.collectionVariables.set('requesterIdNo', json.clientCredentials.clientIdNumber || '');",
+                  "}",
+                  "console.log('accessToken:', (json.accessToken || '').slice(0, 12) + '...',",
+                  "            '| Requester-ID-Type:', pm.collectionVariables.get('requesterIdType'),",
+                  "            '| Requester-ID-No:', pm.collectionVariables.get('requesterIdNo'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientName\": \"{{tokenClientName}}\",\n  \"transactionId\": \"{{transactionId}}\",\n  \"functionName\": \"{{tokenFunctionName}}\",\n  \"userName\": \"{{tokenUserName}}\",\n  \"companyCode\": \"{{companyCode}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{tokenBaseUrl}}{{tokenPath}}",
+              "host": [ "{{tokenBaseUrl}}{{tokenPath}}" ]
+            },
+            "description": "Cache YOK - her SBM cagrisindan once yeni token. Cevaptan accessToken + clientCredentials (clientIdentityType -> Requester-ID-Type, clientIdNumber -> Requester-ID-No) otomatik degiskene yazilir."
+          }
+        }
+      ]
+    },
+    {
+      "name": "B - ESB Proxy (prep)",
+      "item": [
+        {
+          "name": "gonder (POST /sbmDeclarationServices)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Requester-ID-Type", "value": "{{requesterIdType}}" },
+              { "key": "Requester-ID-No", "value": "{{requesterIdNo}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ay\": 7,\n  \"yil\": 2026,\n  \"ilKodu\": 34,\n  \"sigortaSirketKodu\": \"{{companyCode}}\",\n  \"sonOdemeTarihi\": \"2026-08-20\",\n  \"ysvDosyaNo\": \"{{ysvDosyaNo}}\",\n  \"ysvTutarList\": [\n    {\n      \"menkulTipi\": \"MENKUL\",\n      \"alinanPrimTutari\": 1500.75,\n      \"iptalPrimTutari\": 0,\n      \"odenecekVergi\": 75.04,\n      \"vergiPrimTutari\": 1500.75,\n      \"vergiOrani\": 5,\n      \"gecmisAyIadeTutari\": 0\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{esbBaseUrl}}{{esbPath}}",
+              "host": [ "{{esbBaseUrl}}{{esbPath}}" ]
+            },
+            "description": "Buyuksehir/il seviyesi ise ilceKodu HIC koyma. Ilce seviyesindeyse \"ilceKodu\": 1105 ekle. Sayisal alanlar tirnaksiz. Cevap header'indaki Transaction-Id'yi not al (SBM destek talebi)."
+          }
+        },
+        {
+          "name": "guncelle (PUT /sbmDeclarationServices)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Requester-ID-Type", "value": "{{requesterIdType}}" },
+              { "key": "Requester-ID-No", "value": "{{requesterIdNo}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sigortaSirketKodu\": \"{{companyCode}}\",\n  \"sonOdemeTarihi\": \"2026-08-20\",\n  \"ysvDosyaNo\": \"{{ysvDosyaNo}}\",\n  \"ysvTutarList\": [\n    {\n      \"menkulTipi\": \"MENKUL\",\n      \"alinanPrimTutari\": 1600.00,\n      \"iptalPrimTutari\": 100.00,\n      \"odenecekVergi\": 80.00,\n      \"vergiPrimTutari\": 1500.00,\n      \"vergiOrani\": 5,\n      \"gecmisAyIadeTutari\": 0\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{esbBaseUrl}}{{esbPath}}",
+              "host": [ "{{esbBaseUrl}}{{esbPath}}" ]
+            },
+            "description": "PUT govdesinde ay/yil/ilKodu/ilceKodu YOK (mapper null birakir, NON_NULL eler)."
+          }
+        },
+        {
+          "name": "sorgu (GET /sbmDeclarationServices?...)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Requester-ID-Type", "value": "{{requesterIdType}}" },
+              { "key": "Requester-ID-No", "value": "{{requesterIdNo}}" }
+            ],
+            "url": {
+              "raw": "{{esbBaseUrl}}{{esbPath}}?sigortaSirketKodu={{companyCode}}&ysvDosyaNo={{ysvDosyaNo}}",
+              "host": [ "{{esbBaseUrl}}{{esbPath}}" ],
+              "query": [
+                { "key": "sigortaSirketKodu", "value": "{{companyCode}}" },
+                { "key": "ysvDosyaNo", "value": "{{ysvDosyaNo}}" }
+              ]
+            },
+            "description": "Govde YOK; parametreler query string. SBM Postman ornegi bu sekilde."
+          }
+        },
+        {
+          "name": "iptal (PUT /sbmDeclarationServices - tutarlar 0)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Requester-ID-Type", "value": "{{requesterIdType}}" },
+              { "key": "Requester-ID-No", "value": "{{requesterIdNo}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sigortaSirketKodu\": \"{{companyCode}}\",\n  \"sonOdemeTarihi\": \"2026-08-20\",\n  \"ysvDosyaNo\": \"{{ysvDosyaNo}}\",\n  \"ysvTutarList\": [\n    {\n      \"menkulTipi\": \"MENKUL\",\n      \"alinanPrimTutari\": 0,\n      \"iptalPrimTutari\": 0,\n      \"odenecekVergi\": 0,\n      \"vergiPrimTutari\": 0,\n      \"vergiOrani\": 0,\n      \"gecmisAyIadeTutari\": 0\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{esbBaseUrl}}{{esbPath}}",
+              "host": [ "{{esbBaseUrl}}{{esbPath}}" ]
+            },
+            "description": "SBM'de silme yok; iptal = tum tutarlar 0 ile PUT."
+          }
+        }
+      ]
+    },
+    {
+      "name": "C - App REST API (prep)",
+      "item": [
+        {
+          "name": "upload (POST /api/v1/declarations/upload)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-User-Name", "value": "{{xUserName}}" },
+              { "key": "X-Api-Key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": [] }
+              ]
+            },
+            "url": {
+              "raw": "{{appBaseUrl}}/api/v1/declarations/upload",
+              "host": [ "{{appBaseUrl}}/api/v1/declarations/upload" ]
+            },
+            "description": "Sadece .xlsx. Gecerli satirlar STATUS=NEW yazilir."
+          }
+        },
+        {
+          "name": "send (POST /api/v1/declarations/send)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-User-Name", "value": "{{xUserName}}" },
+              { "key": "X-Api-Key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processIds\": [16, 306]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{appBaseUrl}}/api/v1/declarations/send",
+              "host": [ "{{appBaseUrl}}/api/v1/declarations/send" ]
+            },
+            "description": "processIds verilirse diger filtreler yok sayilir. Alternatif govde: { \"year\": 2026, \"month\": 7, \"cityCode\": 34 }"
+          }
+        },
+        {
+          "name": "update (PUT /api/v1/declarations/update)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-User-Name", "value": "{{xUserName}}" },
+              { "key": "X-Api-Key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processIds\": [16, 306]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{appBaseUrl}}/api/v1/declarations/update",
+              "host": [ "{{appBaseUrl}}/api/v1/declarations/update" ]
+            }
+          }
+        },
+        {
+          "name": "cancel (POST /api/v1/declarations/cancel)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-User-Name", "value": "{{xUserName}}" },
+              { "key": "X-Api-Key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processIds\": [16, 306]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{appBaseUrl}}/api/v1/declarations/cancel",
+              "host": [ "{{appBaseUrl}}/api/v1/declarations/cancel" ]
+            }
+          }
+        },
+        {
+          "name": "query (GET /api/v1/declarations/query/{ysvDosyaNo})",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-User-Name", "value": "{{xUserName}}" },
+              { "key": "X-Api-Key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{appBaseUrl}}/api/v1/declarations/query/{{ysvDosyaNo}}",
+              "host": [ "{{appBaseUrl}}/api/v1/declarations/query/{{ysvDosyaNo}}" ]
+            },
+            "description": "sigortaSirketKodu server-side 045 ile doldurulur. Onaylanirsa kayitlar COMPLETED olur."
+          }
+        },
+        {
+          "name": "processes (GET /api/v1/declarations/processes)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-User-Name", "value": "{{xUserName}}" },
+              { "key": "X-Api-Key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{appBaseUrl}}/api/v1/declarations/processes?status=ERROR&year=2026&month=7",
+              "host": [ "{{appBaseUrl}}/api/v1/declarations/processes" ],
+              "query": [
+                { "key": "status", "value": "ERROR" },
+                { "key": "year", "value": "2026" },
+                { "key": "month", "value": "7" }
+              ]
+            },
+            "description": "Kayit STATUS kontrolu icin."
+          }
+        }
+      ]
+    },
+    {
+      "name": "D - SBM Direct (diagnostic only)",
+      "item": [
+        {
+          "name": "sorgu direct (GET .../v10/ysv-beyanname?...)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Requester-ID-Type", "value": "{{requesterIdType}}" },
+              { "key": "Requester-ID-No", "value": "{{requesterIdNo}}" }
+            ],
+            "url": {
+              "raw": "{{sbmDirectBaseUrl}}/ysv-beyanname?sigortaSirketKodu={{companyCode}}&ysvDosyaNo={{ysvDosyaNo}}",
+              "host": [ "{{sbmDirectBaseUrl}}/ysv-beyanname" ],
+              "query": [
+                { "key": "sigortaSirketKodu", "value": "{{companyCode}}" },
+                { "key": "ysvDosyaNo", "value": "{{ysvDosyaNo}}" }
+              ]
+            },
+            "description": "prers.sbm.org.tr = 176.235.131.9 (Allianz ic DNS). VDI'dan ETIMEDOUT verirse -> SBM IP whitelist'i yok, normaldir; B katmanini (ESB) kullan. 404/405 verip /sorgu calisiyorsa OSB business service'i o path'e cevir."
+          }
+        },
+        {
+          "name": "sorgu direct - /sorgu path (GET .../v10/ysv-beyanname/sorgu?...)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Requester-ID-Type", "value": "{{requesterIdType}}" },
+              { "key": "Requester-ID-No", "value": "{{requesterIdNo}}" }
+            ],
+            "url": {
+              "raw": "{{sbmDirectBaseUrl}}/ysv-beyanname/sorgu?sigortaSirketKodu={{companyCode}}&ysvDosyaNo={{ysvDosyaNo}}",
+              "host": [ "{{sbmDirectBaseUrl}}/ysv-beyanname/sorgu" ],
+              "query": [
+                { "key": "sigortaSirketKodu", "value": "{{companyCode}}" },
+                { "key": "ysvDosyaNo", "value": "{{ysvDosyaNo}}" }
+              ]
+            },
+            "description": "Hangi path result:true donerse SBM sorgu ucu odur. (whitelist yoksa yine ETIMEDOUT)"
+          }
+        }
+      ]
+    }
+  ]
+}
