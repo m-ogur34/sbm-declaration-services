@@ -1,10 +1,7 @@
 package tr.com.allianz.ysv.services.dto.internal;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import java.time.LocalDate;
-import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -12,7 +9,12 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Response of the SBM {@code ysv-beyanname/sorgu} call.
+ * SBM {@code ysv-beyanname/sorgu} (GET) çağrısının cevap zarfı.
+ *
+ * <p>POST/PUT ile aynı zarf yapısı: {@code { "result": bool, "data": {...}, "status": int } }.
+ * Başarıda {@code data} sorgulanan beyannamedir ({@link SbmQueryData}); hatada
+ * {@code data} yoktur ve {@link #error} dolar. Bu tip {@code DeclarationService.query}
+ * tarafından çağırana aynen döndürülür.</p>
  */
 @Getter
 @Setter
@@ -27,22 +29,7 @@ public class SbmQueryResponse {
 
     private Integer status;
 
-    private Integer ay;
-
-    private Integer yil;
-
-    private Integer ilKodu;
-
-    private Integer ilceKodu;
-
-    private String sigortaSirketKodu;
-
-    @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate sonOdemeTarihi;
-
-    private String ysvDosyaNo;
-
-    private List<SbmAmountItem> ysvTutarList;
+    private SbmQueryData data;
 
     private SbmError error;
 }

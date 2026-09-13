@@ -1,22 +1,20 @@
 package tr.com.allianz.ysv.services.enums;
 
-import lombok.Getter;
-
 /**
- * Operation carried out against SBM. The name is persisted in
- * {@code ALZ_SBM_DECL_LOG.OPERATION_TYPE} and is also used to pick the
- * {@code functionName} sent to alz-token-management.
+ * SBM'ye karşı yapılan işlem tipi. Adı ({@code name()}) {@code ALZ_SBM_DECL_LOG.OPERATION_TYPE}
+ * kolonuna yazılır ve loglarda hangi işlemin token istediğini göstermek için kullanılır.
+ *
+ * <p>Not: token isteğindeki {@code functionName} artık bu enum'dan değil, ortam bazlı
+ * {@code token-management.function-name} ayarından okunur.</p>
  */
-@Getter
 public enum OperationType {
 
-    POST("ysv-beyanname-gonder"),
-    PUT("ysv-beyanname-guncelle"),
-    GET("ysv-beyanname-sorgu");
+    /** Yeni beyanname — HTTP POST. */
+    POST,
 
-    private final String tokenFunctionName;
+    /** Güncelleme / iptal (tutar sıfırlama) — HTTP PUT. */
+    PUT,
 
-    OperationType(String tokenFunctionName) {
-        this.tokenFunctionName = tokenFunctionName;
-    }
+    /** Sorgu — HTTP GET. */
+    GET
 }

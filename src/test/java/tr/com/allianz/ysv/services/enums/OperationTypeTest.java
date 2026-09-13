@@ -7,15 +7,17 @@ import org.junit.jupiter.api.Test;
 class OperationTypeTest {
 
     @Test
-    void eachOperationCarriesItsTokenFunctionName() {
-        assertThat(OperationType.POST.getTokenFunctionName()).isEqualTo("ysv-beyanname-gonder");
-        assertThat(OperationType.PUT.getTokenFunctionName()).isEqualTo("ysv-beyanname-guncelle");
-        assertThat(OperationType.GET.getTokenFunctionName()).isEqualTo("ysv-beyanname-sorgu");
-    }
-
-    @Test
     void enumSurfaceIsStable() {
         assertThat(OperationType.values()).hasSize(3);
         assertThat(OperationType.valueOf("PUT")).isSameAs(OperationType.PUT);
+        assertThat(OperationType.valueOf("POST")).isSameAs(OperationType.POST);
+        assertThat(OperationType.valueOf("GET")).isSameAs(OperationType.GET);
+    }
+
+    @Test
+    void namesAreThePersistedOperationTypeValues() {
+        assertThat(OperationType.POST.name()).isEqualTo("POST");
+        assertThat(OperationType.PUT.name()).isEqualTo("PUT");
+        assertThat(OperationType.GET.name()).isEqualTo("GET");
     }
 }

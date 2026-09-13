@@ -27,15 +27,15 @@ class TokenManagementServiceTest {
 
     private static final String TOKEN_URL =
             "http://token.test.local/alz-token-management/api/v1/tokens/sbm-token-generate";
+
     private static final String ACCESS_TOKEN = "MOCK-TEST-ACCESS-TOKEN-VALUE";
 
     private static final String SUCCESS_BODY = """
-        {
-          "accessToken": "%s",
-          "clientCredentials": { "clientIdentityType": 1, "clientIdNumber": "86773997310" }
-        }
-        """.formatted(ACCESS_TOKEN);
-
+            {
+              "accessToken": "%s",
+              "clientCredentials": { "clientIdentityType": 1, "clientIdNumber": "86773997310" }
+            }
+            """.formatted(ACCESS_TOKEN);
 
     private MockRestServiceServer server;
     private TokenManagementService service;
@@ -45,27 +45,31 @@ class TokenManagementServiceTest {
         RestClient.Builder builder = RestClient.builder();
         server = MockRestServiceServer.bindTo(builder).build();
 
+        service = new TokenManagementService(builder.build(), properties());
+    }
+
+    private static TokenManagementProperties properties() {
         TokenManagementProperties properties = new TokenManagementProperties();
         properties.setBaseUrl("http://token.test.local");
         properties.setPath("/alz-token-management/api/v1/tokens/sbm-token-generate");
         properties.setClientName("ysv");
+        properties.setFunctionName("test");
         properties.setUserName("TEST_USER");
         properties.setCompanyCode("045");
         properties.setConnectTimeout(Duration.ofSeconds(1));
         properties.setReadTimeout(Duration.ofSeconds(2));
-
-        service = new TokenManagementService(builder.build(), properties);
+        return properties;
     }
 
     @Test
-    @DisplayName("a fresh token is requested with a new transactionId and the operation's functionName")
-    void generateToken_sendsConfiguredIdentityAndOperationName() {
+    @DisplayName("a fresh token is requested with a new transactionId and the configured functionName")
+    void generateToken_sendsConfiguredIdentityAndFunctionName() {
         server.expect(requestTo(TOKEN_URL))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(jsonPath("$.clientName").value("ysv"))
                 .andExpect(jsonPath("$.userName").value("TEST_USER"))
                 .andExpect(jsonPath("$.companyCode").value("045"))
-                .andExpect(jsonPath("$.functionName").value("ysv-beyanname-gonder"))
+                .andExpect(jsonPath("$.functionName").value("test"))
                 .andExpect(jsonPath("$.transactionId").exists())
                 .andRespond(withSuccess(SUCCESS_BODY, MediaType.APPLICATION_JSON));
 
@@ -78,14 +82,25 @@ class TokenManagementServiceTest {
     }
 
     @Test
-    void generateToken_usesTheUpdateFunctionNameForPut() {
-        server.expect(requestTo(TOKEN_URL))
-                .andExpect(jsonPath("$.functionName").value("ysv-beyanname-guncelle"))
+    @DisplayName("functionName comes from config, not from the operation type")
+    void generateToken_functionNameIsTheSameForEveryOperation() {
+        TokenManagementProperties props = properties();
+        props.setFunctionName("ysv-prod-fn");
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer localServer = MockRestServiceServer.bindTo(builder).build();
+        TokenManagementService localService = new TokenManagementService(builder.build(), props);
+
+        localServer.expect(requestTo(TOKEN_URL))
+                .andExpect(jsonPath("$.functionName").value("ysv-prod-fn"))
+                .andRespond(withSuccess(SUCCESS_BODY, MediaType.APPLICATION_JSON));
+        localServer.expect(requestTo(TOKEN_URL))
+                .andExpect(jsonPath("$.functionName").value("ysv-prod-fn"))
                 .andRespond(withSuccess(SUCCESS_BODY, MediaType.APPLICATION_JSON));
 
-        service.generateToken(OperationType.PUT);
+        localService.generateToken(OperationType.PUT);
+        localService.generateToken(OperationType.GET);
 
-        server.verify();
+        localServer.verify();
     }
 
     @Test
@@ -130,8 +145,8 @@ class TokenManagementServiceTest {
     @Test
     void generateToken_rejectsMissingClientCredentials() {
         server.expect(requestTo(TOKEN_URL)).andRespond(withSuccess("""
-                {"accessToken": "eyJhbGciOiJIUzUxMiJ9.header.signature"}
-                """, MediaType.APPLICATION_JSON));
+                {"accessToken": "%s"}
+                """.formatted(ACCESS_TOKEN), MediaType.APPLICATION_JSON));
 
         assertThatThrownBy(() -> service.generateToken(OperationType.POST))
                 .isInstanceOf(TokenException.class)
@@ -141,9 +156,9 @@ class TokenManagementServiceTest {
     @Test
     void generateToken_rejectsBlankClientIdNumber() {
         server.expect(requestTo(TOKEN_URL)).andRespond(withSuccess("""
-                {"accessToken": "eyJhbGciOiJIUzUxMiJ9.header.signature",
+                {"accessToken": "%s",
                  "clientCredentials": {"clientIdentityType": 1, "clientIdNumber": "  "}}
-                """, MediaType.APPLICATION_JSON));
+                """.formatted(ACCESS_TOKEN), MediaType.APPLICATION_JSON));
 
         assertThatThrownBy(() -> service.generateToken(OperationType.POST))
                 .isInstanceOf(TokenException.class)

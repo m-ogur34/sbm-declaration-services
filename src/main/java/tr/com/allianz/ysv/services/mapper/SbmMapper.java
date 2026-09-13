@@ -86,7 +86,7 @@ public class SbmMapper {
     /**
      * @param ysvDosyaNo SBM file number to look up
      * @param companyCode SBM company code ("045")
-     * @return the query body
+     * @return the query parameters (GET query string)
      */
     public SbmQueryRequest toQueryRequest(String ysvDosyaNo, String companyCode) {
         requireCompanyCode(companyCode);

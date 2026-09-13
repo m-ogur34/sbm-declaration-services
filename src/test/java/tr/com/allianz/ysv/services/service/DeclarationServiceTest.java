@@ -264,14 +264,15 @@ class DeclarationServiceTest {
                 .success(true)
                 .httpStatus(200)
                 .requestPayload("{}")
-                .responsePayload("{\"result\":true,\"status\":200,\"ysvDosyaNo\":\"YSV202513491\","
-                        + "\"sonOdemeTarihi\":\"2026-01-20\",\"ysvTutarList\":[]}")
+                .responsePayload("{\"result\":true,\"status\":200,\"data\":{"
+                        + "\"ysvDosyaNo\":\"YSV202513491\",\"sonOdemeTarihi\":\"2026-01-20\","
+                        + "\"ysvTutarList\":[]}}")
                 .build());
 
         SbmQueryResponse response = service.query("YSV202513491", USER);
 
         assertThat(response.getResult()).isTrue();
-        assertThat(response.getYsvDosyaNo()).isEqualTo("YSV202513491");
+        assertThat(response.getData().getYsvDosyaNo()).isEqualTo("YSV202513491");
         verify(declarationGroupProcessor).markCompleted(List.of(1L), USER);
     }
 

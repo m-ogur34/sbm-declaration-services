@@ -19,6 +19,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import tr.com.allianz.ysv.services.dto.internal.SbmQueryData;
 import tr.com.allianz.ysv.services.dto.internal.SbmQueryResponse;
 import tr.com.allianz.ysv.services.dto.request.DeclarationFilterRequest;
 import tr.com.allianz.ysv.services.dto.response.BatchOperationResponse;
@@ -101,14 +102,14 @@ class DeclarationControllerTest {
         SbmQueryResponse response = SbmQueryResponse.builder()
                 .result(true)
                 .status(200)
-                .ysvDosyaNo("YSV202513491")
+                .data(SbmQueryData.builder().ysvDosyaNo("YSV202513491").ay(1).yil(2026).build())
                 .build();
         when(declarationService.query(eq("YSV202513491"), any())).thenReturn(response);
 
         mockMvc.perform(get("/api/v1/declarations/query/YSV202513491"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result").value(true))
-                .andExpect(jsonPath("$.ysvDosyaNo").value("YSV202513491"));
+                .andExpect(jsonPath("$.data.ysvDosyaNo").value("YSV202513491"));
     }
 
     @Test

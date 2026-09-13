@@ -53,6 +53,9 @@ public interface DeclarationProcessRepository extends JpaRepository<DeclarationP
 
     List<DeclarationProcess> findBySbmFileNo(String sbmFileNo);
 
+    /** Excel yüklemede mükerrer dosya numarası kontrolü için. */
+    boolean existsBySbmFileNo(String sbmFileNo);
+
     /** Paged listing for the operations screen. */
     @Query("""
             select p from DeclarationProcess p
