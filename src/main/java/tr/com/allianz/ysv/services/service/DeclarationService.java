@@ -97,11 +97,11 @@ public class DeclarationService {
                 "GET " + ysvDosyaNo + (result.isSuccess() ? " başarılı" : " başarısız")
                         + " (HTTP " + result.getHttpStatus()
                         + ", Transaction-Id: " + result.getTransactionId() + ")",
-                result.getRequestPayload(), result.getResponsePayload());
+                result.getRequestPayload(), result.getResponsePayload(), user);
 
         if (!result.isSuccess()) {
             throw new SbmIntegrationException(result.getErrorCode(),
-                    JsonUtil.truncate(result.getErrorMessage(), JsonUtil.ERROR_DETAILS_MAX_LENGTH));
+                    JsonUtil.truncate(result.getErrorMessage(), JsonUtil.ERROR_DETAILS_MAX_BYTES));
         }
 
         SbmQueryResponse response = jsonUtil.fromJson(result.getResponsePayload(), SbmQueryResponse.class);

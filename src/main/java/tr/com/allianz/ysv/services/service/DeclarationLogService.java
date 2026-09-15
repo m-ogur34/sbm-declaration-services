@@ -36,6 +36,8 @@ public class DeclarationLogService {
      * @param message         short Turkish summary
      * @param requestPayload  serialized request body; never contains the Authorization header
      * @param responsePayload raw response body
+     * @param triggeredByUser operator behind the call; the process row only keeps the last one,
+     *                        so per-call attribution has to live here
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void logCall(Collection<Long> processIds,
@@ -43,15 +45,17 @@ public class DeclarationLogService {
                         LogLevel logLevel,
                         String message,
                         String requestPayload,
-                        String responsePayload) {
+                        String responsePayload,
+                        String triggeredByUser) {
         LocalDateTime now = LocalDateTime.now();
         List<DeclarationLog> rows = new ArrayList<>();
         if (processIds == null || processIds.isEmpty()) {
-            rows.add(buildRow(null, operationType, logLevel, message, requestPayload, responsePayload, now));
+            rows.add(buildRow(null, operationType, logLevel, message,
+                    requestPayload, responsePayload, now, triggeredByUser));
         } else {
             for (Long processId : processIds) {
                 rows.add(buildRow(processId, operationType, logLevel, message,
-                        requestPayload, responsePayload, now));
+                        requestPayload, responsePayload, now, triggeredByUser));
             }
         }
 
@@ -70,7 +74,8 @@ public class DeclarationLogService {
                                     String message,
                                     String requestPayload,
                                     String responsePayload,
-                                    LocalDateTime createdAt) {
+                                    LocalDateTime createdAt,
+                                    String triggeredByUser) {
         return DeclarationLog.builder()
                 .processId(processId)
                 .operationType(operationType)
@@ -79,6 +84,7 @@ public class DeclarationLogService {
                 .requestPayload(requestPayload)
                 .responsePayload(responsePayload)
                 .dateCreated(createdAt)
+                .triggeredByUser(triggeredByUser)
                 .build();
     }
 }

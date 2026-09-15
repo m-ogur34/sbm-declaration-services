@@ -78,7 +78,8 @@ CREATE TABLE ALZ_SBM_DECL_LOG (
     LOG_MESSAGE         CLOB,
     REQUEST_PAYLOAD     CLOB,
     RESPONSE_PAYLOAD    CLOB,
-    DATE_CREATED        DATE            DEFAULT SYSDATE
+    DATE_CREATED        DATE            DEFAULT SYSDATE,
+    TRIGGERED_BY_USER   VARCHAR2(100)
 );
 
 -- =============================================

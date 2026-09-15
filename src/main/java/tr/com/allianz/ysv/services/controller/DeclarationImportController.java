@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import tr.com.allianz.ysv.services.dto.response.ImportResultResponse;
 import tr.com.allianz.ysv.services.service.DeclarationImportService;
+import tr.com.allianz.ysv.services.util.UserNameResolver;
 
 /**
  * 1. AŞAMA — YSV beyanname Excel'ini yükleyen uç.
@@ -47,6 +48,7 @@ public class DeclarationImportController {
         if (name == null || !name.toLowerCase(Locale.ROOT).endsWith(".xlsx")) {
             throw new IllegalArgumentException("Sadece .xlsx dosyası yüklenebilir. Gelen: " + name);
         }
-        return ResponseEntity.ok(declarationImportService.importFile(file, user));
+        return ResponseEntity.ok(
+                declarationImportService.importFile(file, UserNameResolver.resolve(user)));
     }
 }

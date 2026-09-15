@@ -65,4 +65,12 @@ public class DeclarationLog {
 
     @Column(name = "DATE_CREATED")
     private LocalDateTime dateCreated;
+
+    /**
+     * Operator behind the call, taken from the {@code X-User-Name} header. It is an audit
+     * label, not an identity: the header is not authenticated, so nothing may authorize on it.
+     * Until the UI is wired up every call arrives as {@code SYSTEM}.
+     */
+    @Column(name = "TRIGGERED_BY_USER", length = 100)
+    private String triggeredByUser;
 }

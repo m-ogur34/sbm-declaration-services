@@ -36,7 +36,7 @@ class DeclarationLogServiceTest {
     @DisplayName("one evidence row is written per declaration line")
     void logCall_writesOneRowPerProcessId() {
         service.logCall(List.of(1L, 2L), OperationType.POST, LogLevel.INFO,
-                "POST YSV1 başarılı", "{\"a\":1}", "{\"result\":true}");
+                "POST YSV1 başarılı", "{\"a\":1}", "{\"result\":true}", "WDA2422");
 
         verify(declarationLogRepository).saveAll(rowsCaptor.capture());
         List<DeclarationLog> rows = rowsCaptor.getValue();
@@ -51,22 +51,26 @@ class DeclarationLogServiceTest {
             assertThat(row.getRequestPayload()).isEqualTo("{\"a\":1}");
             assertThat(row.getResponsePayload()).isEqualTo("{\"result\":true}");
             assertThat(row.getDateCreated()).isNotNull();
+            assertThat(row.getTriggeredByUser()).isEqualTo("WDA2422");
         });
     }
 
     @Test
     @DisplayName("a call that belongs to no row is still recorded, with a null PROCESS_ID")
     void logCall_writesASingleRowWhenThereAreNoProcessIds() {
-        service.logCall(List.of(), OperationType.GET, LogLevel.ERROR, "GET başarısız", null, null);
+        service.logCall(List.of(), OperationType.GET, LogLevel.ERROR, "GET başarısız", null, null, "SYSTEM");
 
         verify(declarationLogRepository).saveAll(rowsCaptor.capture());
         assertThat(rowsCaptor.getValue()).hasSize(1)
-                .allSatisfy(row -> assertThat(row.getProcessId()).isNull());
+                .allSatisfy(row -> {
+                    assertThat(row.getProcessId()).isNull();
+                    assertThat(row.getTriggeredByUser()).isEqualTo("SYSTEM");
+                });
     }
 
     @Test
     void logCall_acceptsNullProcessIds() {
-        service.logCall(null, OperationType.GET, LogLevel.WARNING, "uyarı", null, null);
+        service.logCall(null, OperationType.GET, LogLevel.WARNING, "uyarı", null, null, "SYSTEM");
 
         verify(declarationLogRepository).saveAll(rowsCaptor.capture());
         assertThat(rowsCaptor.getValue()).hasSize(1);
@@ -79,6 +83,6 @@ class DeclarationLogServiceTest {
                 .thenThrow(new IllegalStateException("ORA-00942"));
 
         assertThatCode(() -> service.logCall(List.of(1L), OperationType.PUT, LogLevel.ERROR,
-                "PUT başarısız", "{}", "{}")).doesNotThrowAnyException();
+                "PUT başarısız", "{}", "{}", "WDA2422")).doesNotThrowAnyException();
     }
 }

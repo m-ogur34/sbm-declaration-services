@@ -77,6 +77,16 @@ class DeclarationImportControllerTest {
     }
 
     @Test
+    @DisplayName("CREATED_BY_USER'a sığmayan X-User-Name 400 döner (ORA-12899 önlenir)")
+    void upload_oversizedUserHeader_returns400() throws Exception {
+        mockMvc.perform(multipart("/api/v1/declarations/upload")
+                        .file(xlsx("b.xlsx"))
+                        .header("X-User-Name", "u".repeat(101)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("ALZ-VALIDATION"));
+    }
+
+    @Test
     void upload_fileWithoutName_returns400() throws Exception {
         MockMultipartFile noName = new MockMultipartFile("file", null,
                 "application/octet-stream", "data".getBytes());

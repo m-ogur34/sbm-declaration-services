@@ -90,7 +90,7 @@ class DeclarationGroupProcessorTest {
             assertThat(row.getDateUpdated()).isNull();
         });
         verify(declarationLogService).logCall(eq(GROUP_IDS), eq(OperationType.POST), eq(LogLevel.INFO),
-                anyString(), anyString(), anyString());
+                anyString(), anyString(), anyString(), eq("WDA2422"));
     }
 
     @Test
@@ -154,11 +154,11 @@ class DeclarationGroupProcessorTest {
             assertThat(row.getUpdatedByUser()).isEqualTo("WDA2422");
         });
         verify(declarationLogService).logCall(eq(GROUP_IDS), eq(OperationType.POST), eq(LogLevel.ERROR),
-                anyString(), anyString(), anyString());
+                anyString(), anyString(), anyString(), eq("WDA2422"));
     }
 
     @Test
-    @DisplayName("ERROR_DETAILS never exceeds the 2000 characters the column holds")
+    @DisplayName("ERROR_DETAILS never exceeds the 2000 bytes the column holds")
     void process_longErrorMessage_isTruncated() {
         List<DeclarationProcess> group = newGroup(ProcessStatus.NEW);
         when(declarationProcessRepository.lockByIds(GROUP_IDS)).thenReturn(group);
@@ -171,7 +171,7 @@ class DeclarationGroupProcessorTest {
 
         processor.process(OperationType.POST, false, GROUP_IDS, "WDA2422");
 
-        assertThat(group.get(0).getErrorDetails()).hasSize(JsonUtil.ERROR_DETAILS_MAX_LENGTH);
+        assertThat(group.get(0).getErrorDetails()).hasSize(JsonUtil.ERROR_DETAILS_MAX_BYTES);
     }
 
     @Test
@@ -191,7 +191,7 @@ class DeclarationGroupProcessorTest {
         assertThat(group.get(0).getStatus()).isEqualTo(ProcessStatus.ERROR);
         verify(sbmClientService, never()).send(any());
         verify(declarationLogService).logCall(eq(GROUP_IDS), eq(OperationType.POST), eq(LogLevel.ERROR),
-                anyString(), isNull(), isNull());
+                anyString(), isNull(), isNull(), eq("WDA2422"));
     }
 
     @Test

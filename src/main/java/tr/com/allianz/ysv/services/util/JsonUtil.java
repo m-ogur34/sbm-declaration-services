@@ -2,6 +2,7 @@ package tr.com.allianz.ysv.services.util;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -16,8 +17,12 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class JsonUtil {
 
-    /** {@code ALZ_SBM_DECL_PROCESS.ERROR_DETAILS} is VARCHAR2(2000). */
-    public static final int ERROR_DETAILS_MAX_LENGTH = 2000;
+    /**
+     * {@code ALZ_SBM_DECL_PROCESS.ERROR_DETAILS} is VARCHAR2(2000), and the column is declared
+     * in bytes: SBM's Turkish reasons cost two bytes per non-ASCII character, so a limit
+     * counted in characters would let the insert fail with ORA-12899.
+     */
+    public static final int ERROR_DETAILS_MAX_BYTES = 2000;
 
     private static final String UNSERIALIZABLE = "{\"error\":\"payload serialize edilemedi\"}";
 
@@ -58,13 +63,23 @@ public class JsonUtil {
 
     /**
      * @param value text to shorten, may be {@code null}
-     * @param maxLength maximum number of characters to keep
+     * @param maxBytes maximum number of UTF-8 bytes to keep
      * @return {@code value} unchanged when it fits, otherwise the truncated text
      */
-    public static String truncate(String value, int maxLength) {
-        if (value == null || value.length() <= maxLength) {
+    public static String truncate(String value, int maxBytes) {
+        if (value == null) {
+            return null;
+        }
+        byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length <= maxBytes) {
             return value;
         }
-        return value.substring(0, maxLength);
+        // Walk back over UTF-8 continuation bytes (10xxxxxx) so the cut never lands in the
+        // middle of a character and leaves a replacement char behind.
+        int end = maxBytes;
+        while (end > 0 && (bytes[end] & 0xC0) == 0x80) {
+            end--;
+        }
+        return new String(bytes, 0, end, StandardCharsets.UTF_8);
     }
 }

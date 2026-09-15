@@ -447,7 +447,11 @@ NEW ──gönder──▶ PROCESSING ──(2xx & result:true)──▶ SENT �
 ## 8. Loglama
 
 - Her gönder / güncelle / sorgu işlemi `ALZ_SBM_DECL_LOG`'a yazılır
-  (`OPERATION_TYPE`, `LOG_LEVEL`, `LOG_MESSAGE`, `REQUEST_PAYLOAD`, `RESPONSE_PAYLOAD`).
+  (`OPERATION_TYPE`, `LOG_LEVEL`, `LOG_MESSAGE`, `REQUEST_PAYLOAD`, `RESPONSE_PAYLOAD`,
+  `TRIGGERED_BY_USER`).
+- `TRIGGERED_BY_USER` = `X-User-Name` başlığı. Process tablosundaki
+  `UPDATED_BY_USER`/`SENT_BY_USER` sadece **son** işlemi tutar; çağrı bazlı kim sorusunun
+  cevabı log tablosundadır. Kimlik doğrulama değildir, yetkilendirmede kullanılmaz.
 - `transactionId` (token isteği) ve SBM `Transaction-Id` (response header) uygulama
   loglarında izlenebilir olmalı.
 - `Authorization` başlığı ve token değerleri audit payload'una **yazılmaz**;

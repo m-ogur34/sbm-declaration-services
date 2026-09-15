@@ -329,7 +329,7 @@ class DeclarationServiceTest {
         service.query("YSV202513491", USER);
 
         verify(declarationLogService).logCall(eq(List.of()), eq(OperationType.GET), any(),
-                anyString(), isNull(), anyString());
+                anyString(), isNull(), anyString(), eq(USER));
     }
 
     @Test

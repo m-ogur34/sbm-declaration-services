@@ -81,7 +81,7 @@ public class DeclarationGroupProcessor {
             declarationLogService.logCall(processIds, operationType,
                     result.isSuccess() ? LogLevel.INFO : LogLevel.ERROR,
                     buildLogMessage(operationType, fileNo, result),
-                    result.getRequestPayload(), result.getResponsePayload());
+                    result.getRequestPayload(), result.getResponsePayload(), user);
 
             if (result.isSuccess()) {
                 markSent(group, operationType, user);
@@ -139,7 +139,7 @@ public class DeclarationGroupProcessor {
                                          String user) {
         log.error("Declaration group {} failed before/while calling SBM: {} - {}",
                 fileNo, errorCode, message);
-        declarationLogService.logCall(processIds, operationType, LogLevel.ERROR, message, null, null);
+        declarationLogService.logCall(processIds, operationType, LogLevel.ERROR, message, null, null, user);
         markError(group, message, user);
         return Optional.of(new FailureDetail(fileNo, errorCode, message));
     }
@@ -185,7 +185,7 @@ public class DeclarationGroupProcessor {
 
     private void markError(List<DeclarationProcess> group, String message, String user) {
         LocalDateTime now = LocalDateTime.now();
-        String details = JsonUtil.truncate(message, JsonUtil.ERROR_DETAILS_MAX_LENGTH);
+        String details = JsonUtil.truncate(message, JsonUtil.ERROR_DETAILS_MAX_BYTES);
         for (DeclarationProcess process : group) {
             process.setStatus(ProcessStatus.ERROR);
             process.setErrorDetails(details);

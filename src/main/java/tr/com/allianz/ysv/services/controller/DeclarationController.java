@@ -24,6 +24,7 @@ import tr.com.allianz.ysv.services.dto.response.PageResponse;
 import tr.com.allianz.ysv.services.dto.response.ProcessView;
 import tr.com.allianz.ysv.services.enums.ProcessStatus;
 import tr.com.allianz.ysv.services.service.DeclarationService;
+import tr.com.allianz.ysv.services.util.UserNameResolver;
 
 @RestController
 @RequestMapping("/api/v1/declarations")
@@ -41,7 +42,7 @@ public class DeclarationController {
     public ResponseEntity<BatchOperationResponse> send(
             @Valid @RequestBody DeclarationFilterRequest request,
             @RequestHeader(value = USER_HEADER, required = false, defaultValue = DEFAULT_USER) String user) {
-        return ResponseEntity.ok(declarationService.send(request, user));
+        return ResponseEntity.ok(declarationService.send(request, UserNameResolver.resolve(user)));
     }
 
     @PutMapping("/update")
@@ -49,7 +50,7 @@ public class DeclarationController {
     public ResponseEntity<BatchOperationResponse> update(
             @Valid @RequestBody DeclarationFilterRequest request,
             @RequestHeader(value = USER_HEADER, required = false, defaultValue = DEFAULT_USER) String user) {
-        return ResponseEntity.ok(declarationService.update(request, user));
+        return ResponseEntity.ok(declarationService.update(request, UserNameResolver.resolve(user)));
     }
 
     @PostMapping("/cancel")
@@ -57,7 +58,7 @@ public class DeclarationController {
     public ResponseEntity<BatchOperationResponse> cancel(
             @Valid @RequestBody DeclarationFilterRequest request,
             @RequestHeader(value = USER_HEADER, required = false, defaultValue = DEFAULT_USER) String user) {
-        return ResponseEntity.ok(declarationService.cancel(request, user));
+        return ResponseEntity.ok(declarationService.cancel(request, UserNameResolver.resolve(user)));
     }
 
     @GetMapping("/query/{ysvDosyaNo}")
@@ -65,7 +66,7 @@ public class DeclarationController {
     public ResponseEntity<SbmQueryResponse> query(
             @PathVariable String ysvDosyaNo,
             @RequestHeader(value = USER_HEADER, required = false, defaultValue = DEFAULT_USER) String user) {
-        return ResponseEntity.ok(declarationService.query(ysvDosyaNo, user));
+        return ResponseEntity.ok(declarationService.query(ysvDosyaNo, UserNameResolver.resolve(user)));
     }
 
     @GetMapping("/processes")
