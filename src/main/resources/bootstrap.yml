@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: sbm-declaration-services
+  profiles:
+    active: dev
+  cloud:
+    vault:
+      host: int-vault-local-test.allianz.com.tr
+      port: 443
+      scheme: https
+      authentication: token
+      enabled: true
+      kv:
+        backend: kv
+      application-name: DEV/apps/sbm-declaration-services
