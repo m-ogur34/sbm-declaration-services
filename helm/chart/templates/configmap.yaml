@@ -1,16 +1,15 @@
-{{/*
-Environment specific settings (application name, ESB and alz-token-management base URLs).
-All profile files are mounted; Spring activates the one matching the profile set in
-helm/values/<env>.yaml.
-*/}}
+{{- $files := .Files.Glob "configs/*" }}
+  {{- $filesNotExists := include "isArrayEmpty" (dict "list" $files) }}
+  {{- if eq "false" $filesNotExists }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "allianz.bundlename" . }}-config
+  name:  {{ include "allianz.bundlename" . }}-config
   labels:
     app: {{ include "allianz.bundlename" . }}
 data:
-{{- range $path, $_ := .Files.Glob "configs/*" }}
-{{ $path | trimPrefix "configs/" | indent 2 }}: |
-{{ $.Files.Get $path | indent 4 }}
-{{- end }}
+  {{- range $path, $_ := .Files.Glob "configs/*" }}
+  {{ $path | trimPrefix "configs/" | indent 2 }}: |
+  {{ $.Files.Get $path | indent 4 }}
+  {{- end }}
+  {{- end }}
