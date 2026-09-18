@@ -1,30 +1,46 @@
 spring:
+  datasource:
+    opus:
+      driver-class-name: oracle.jdbc.OracleDriver
+    cognos:
+      driver-class-name: oracle.jdbc.OracleDriver
+  management:
+    endpoints:
+      web:
+        exposure:
+          include: "*"
+      loggers:
+        enabled: true
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: none
+  properties:
+    hibernate:
+      use_sql_comments: true
+      format_sql: true
+      type: trace
   application:
     name: sbm-declaration-services
-
-esb:
-  # ESB_SERVER is exported from global.overrides.esb.server in helm/values/prep.yaml.
-  base-url: ${ESB_SERVER:http://esb.allianz.com.tr:12000}
-
-# TODO: PREP token servisi parametreleri token ekibinden alınacak.
-# Boş bırakıldılar; TokenManagementProperties @NotBlank olduğu için uygulama bu profille
-# başlatılmaya çalışılırsa ayağa kalkmaz. Değer uydurulmadı.
-# sc-test örneği: base-url: https://int-sc-test-auth.allianz.com.tr
-#                 path: /alz-token-management/api/v1/tokens/sbm-token-generate
-#                 client-name: ysv
-#                 function-name: test
-#                 user-name: WDA2422_16178
-#                 company-code: "045"
-token-management:
-  base-url:
-  path:
-  client-name:
-  function-name:
-  user-name:
-  company-code:
-  connect-timeout: 5s
-  read-timeout: 30s
+  jta:
+    enabled: false
 
 logging:
   level:
+    root: INFO
+    com.allianz.common.collection: INFO
+    org.springframework.web: INFO
+    org.springframework.security: DEBUG
     tr.com.allianz.ysv.services: INFO
+
+esb:
+  base-url: ${ESB_SERVER:http://esb.allianz.com.tr:12000}
+
+token-management:
+  base-url: https://int-prep-auth.allianz.com.tr
+  path: /alz-token-management/api/v1/tokens/sbm-token-generate
+  client-name: ${tokenManagementClientName}
+  user-name: ${tokenManagementUserName}
+  company-code: ${tokenManagementCompanyCode}
+  connect-timeout: 30s
+  read-timeout: 30s
