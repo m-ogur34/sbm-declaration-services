@@ -1,8 +1,3 @@
-global:
-  overrides:
-    esb:
-      server: ~
-
 springboot-deployment:
   gateway:
     migration:
@@ -11,13 +6,16 @@ springboot-deployment:
     env:
       java:
         args: -Xms3g -Xmx3g -XX:+FlightRecorder
+      others:
+        - name: COMMON_CONFIG
+          value: application-config-common.yml
       springboot:
         profile: prep
-        sysType: PREP
+      sysType: PREP
     resources:
       limits:
         cpu: '2'
-        memory: 3Gi
+        memory: 4Gi
       requests:
         cpu: '0.5'
         memory: 3Gi
@@ -26,10 +24,16 @@ springboot-deployment:
         secret: kv/data/PREP
         template: |
           {{ with secret "kv/data/PREP/data-source/opusAgencyDataSource" -}}
-            export SPRING_DATASOURCE_USERNAME="{{ .Data.data.username }}"
-            export SPRING_DATASOURCE_PASSWORD="{{ .Data.data.password }}"
-            export SPRING_DATASOURCE_URL="{{ .Data.data.url }}"
+             export SPRING_DATASOURCE_USERNAME="{{ .Data.data.username_allzwebpol }}"
+             export SPRING_DATASOURCE_PASSWORD="{{ .Data.data.password_allzwebpol }}"
+             export SPRING_DATASOURCE_URL="{{ .Data.data.URL_OPUSPREP_FINANS }}"
+          {{- end }}          
+          {{ with secret "kv/data/PREP/apps/sbm-declaration-services" -}}
+            export SWAGGER_API_KEY="{{ .Data.data.swaggerApiKey }}"
+            export TOKEN_MANAGEMENT_CLIENT_NAME="{{ .Data.data.tokenManagementClientName }}"
+            export SBM_COMPANY_CODE="{{ .Data.data.tokenManagementCompanyCode }}"
+            export TOKEN_MANAGEMENT_USER_NAME="{{ .Data.data.tokenManagementUserName }}"
           {{- end }}
-    autoscale:
-      minReplicas: 1
-      maxReplicas: 1
+  autoscale:
+    minReplicas: 1
+    maxReplicas: 1
