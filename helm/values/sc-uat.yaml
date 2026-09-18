@@ -11,6 +11,9 @@ springboot-deployment:
     env:
       java:
         args: -Xms3g -Xmx3g -XX:+FlightRecorder
+      others:
+        - name: COMMON_CONFIG
+          value: application-config-common.yml
       springboot:
         profile: sc-uat
         sysType: SC-UAT
@@ -26,9 +29,15 @@ springboot-deployment:
         secret: kv/data/UAT
         template: |
           {{ with secret "kv/data/UAT/data-source/opusAgencyDataSource" -}}
-            export SPRING_DATASOURCE_USERNAME="{{ .Data.data.username }}"
-            export SPRING_DATASOURCE_PASSWORD="{{ .Data.data.password }}"
-            export SPRING_DATASOURCE_URL="{{ .Data.data.url }}"
+             export SPRING_DATASOURCE_USERNAME="{{ .Data.data.username_allzwebpol }}"
+             export SPRING_DATASOURCE_PASSWORD="{{ .Data.data.password_allzwebpol }}"
+             export SPRING_DATASOURCE_URL="{{ .Data.data.URL_OPUSUAT_FINANS }}"
+          {{- end }}
+          {{ with secret "kv/data/UAT/apps/sbm-declaration-services" -}}
+            export SWAGGER_API_KEY="{{ .Data.data.swaggerApiKey }}"
+            export TOKEN_MANAGEMENT_CLIENT_NAME="{{ .Data.data.tokenManagementClientName }}"
+            export SBM_COMPANY_CODE="{{ .Data.data.tokenManagementCompanyCode }}"
+            export TOKEN_MANAGEMENT_USER_NAME="{{ .Data.data.tokenManagementUserName }}"
           {{- end }}
     autoscale:
       minReplicas: 1
