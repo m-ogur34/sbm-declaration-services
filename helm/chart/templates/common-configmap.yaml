@@ -1,7 +1,6 @@
-{{/*
-Spring settings shared by every environment. Every file under common-configs/ is mounted
-under its own key, so application.yml lands next to the environment profile file.
-*/}}
+{{- $files := .Files.Glob "common-configs/*" }}
+  {{- $filesNotExists := include "isArrayEmpty" (dict "list" $files) }}
+  {{- if eq "false" $filesNotExists }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -9,7 +8,8 @@ metadata:
   labels:
     app: {{ include "allianz.bundlename" . }}
 data:
-{{- range $path, $_ := .Files.Glob "common-configs/*" }}
-{{ $path | trimPrefix "common-configs/" | indent 2 }}: |
-{{ $.Files.Get $path | indent 4 }}
-{{- end }}
+  {{- range $path, $_ := .Files.Glob "common-configs/*" }}
+  {{ $path | trimPrefix "common-configs/" | indent 2 }}: |
+  {{ $.Files.Get $path | indent 4 }}
+  {{- end }}
+  {{- end }}
