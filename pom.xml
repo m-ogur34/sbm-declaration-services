@@ -18,10 +18,10 @@
     <description>SBM YSV declaration transfer services (Allianz Sigorta)</description>
 
     <properties>
-        <java.version>21</java.version>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
-        <maven.compiler.release>21</maven.compiler.release>
+        <java.version>25</java.version>
+        <maven.compiler.source>25</maven.compiler.source>
+        <maven.compiler.target>25</maven.compiler.target>
+        <maven.compiler.release>25</maven.compiler.release>
 
         <!-- UTF-8 is mandatory: sources and resources contain Turkish characters and
              the build also runs on Windows workstations with a non UTF-8 platform encoding. -->
@@ -47,8 +47,7 @@
              ControllerAdviceBean(Object) constructor'ını çağırıp /v3/api-docs'ta
              500 veriyordu. Spring Boot 3.5 karşılığı 2.8.x. -->
         <springdoc.version>2.8.9</springdoc.version>
-        <!-- Java 25 sınıf dosyalarını enstrümante edebilen ilk sürüm 0.8.14 -->
-        <jacoco.version>0.8.14</jacoco.version>
+        <jacoco.version>0.8.12</jacoco.version>
         <!-- 1. AŞAMA: YSV beyanname Excel'ini Swagger'dan okuyup DB'ye insert eden servis için.
              Prod DB'de manuel script yasak olduğu için veri girişi uygulama üzerinden yapılır. -->
         <poi.version>5.3.0</poi.version>
@@ -357,25 +356,12 @@
                 </configuration>
             </plugin>
 
-            <!-- ${org.mockito:mockito-core:jar} özelliğini üretir; surefire Mockito'yu agent olarak yükler -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>properties</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <!-- Java 21+ dinamik agent yüklemeyi kısıtlıyor; Mockito açıkça -javaagent ile verilir -->
-                    <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar} -Dfile.encoding=UTF-8</argLine>
+
+                    <argLine>@{argLine} -Dfile.encoding=UTF-8</argLine>
                 </configuration>
             </plugin>
 
