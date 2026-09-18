@@ -25,9 +25,6 @@ spring:
     ansi:
       enabled: always
 
-api-guard:
-  enabled: false
-
 management:
   endpoints:
     web:
